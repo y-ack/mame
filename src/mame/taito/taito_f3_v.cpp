@@ -2509,12 +2509,12 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 	u16 sprite_top = 0x2000;
 	for (int offs = 0; offs < sprite_top && (total_sprites < 0x400); offs += 8)
 	{
-		const int current_offs = offs; /* Offs can change during loop, current_offs cannot */
-
+		const u16 *spr = &spriteram16_ptr[offs]; /* Offs can change during loop, spr cannot */
+		
 		/* Check if the sprite list jump command bit is set */
-		if ((spriteram16_ptr[current_offs + 6 + 0]) & 0x8000)
+		if (spr[6] & 0x8000)
 		{
-			const u32 jump = (spriteram16_ptr[current_offs + 6 + 0]) & 0x3ff;
+			const u32 jump = spr[6] & 0x3ff;
 
 			const u32 new_offs = ((offs & 0x4000) | ((jump << 4) / 2));
 			if (new_offs == offs)
@@ -2523,9 +2523,9 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		}
 
 		/* Check if special command bit is set */
-		if (spriteram16_ptr[current_offs + 2 + 1] & 0x8000)
+		if (spr[3] & 0x8000)
 		{
-			const u16 cntrl = spriteram16_ptr[current_offs + 4 + 1];
+			const u16 cntrl = spr[5];
 			m_flipscreen = cntrl & 0x2000;
 
 			/*  cntrl & 0x1000 = disabled?  (From F2 driver, doesn't seem used anywhere)
@@ -2548,36 +2548,36 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		}
 
 		/* Set global sprite scroll */
-		if (((spriteram16_ptr[current_offs + 2 + 0]) & 0xf000) == 0xa000)
+		if ((spr[2] & 0xf000) == 0xa000)
 		{
-			global_x = (spriteram16_ptr[current_offs + 2 + 0]) & 0xfff;
+			global_x = spr[2] & 0xfff;
 			global_x = util::sext(global_x, 12);
-			global_y = spriteram16_ptr[current_offs + 2 + 1] & 0xfff;
+			global_y = spr[3] & 0xfff;
 			global_y = util::sext(global_y, 12);
 		}
 
 		/* And sub-global sprite scroll */
-		if (((spriteram16_ptr[current_offs + 2 + 0]) & 0xf000) == 0x5000)
+		if ((spr[2] & 0xf000) == 0x5000)
 		{
-			subglobal_x = (spriteram16_ptr[current_offs + 2 + 0]) & 0xfff;
+			subglobal_x = spr[2] & 0xfff;
 			subglobal_x = util::sext(subglobal_x, 12);
-			subglobal_y = spriteram16_ptr[current_offs + 2 + 1] & 0xfff;
+			subglobal_y = spr[3] & 0xfff;
 			subglobal_y = util::sext(subglobal_y, 12);
 		}
 
-		if (((spriteram16_ptr[current_offs + 2 + 0]) & 0xf000) == 0xb000)
+		if ((spr[2] & 0xf000) == 0xb000)
 		{
-			subglobal_x = (spriteram16_ptr[current_offs + 2 + 0]) & 0xfff;
+			subglobal_x = spr[2] & 0xfff;
 			subglobal_x = util::sext(subglobal_x, 12);
-			subglobal_y = spriteram16_ptr[current_offs + 2 + 1] & 0xfff;
+			subglobal_y = spr[3] & 0xfff;
 			subglobal_y = util::sext(subglobal_y, 12);
 			global_y = subglobal_y;
 			global_x = subglobal_x;
 		}
 
 		/* A real sprite to process! */
-		const int sprite = (spriteram16_ptr[current_offs + 0 + 0]) | ((spriteram16_ptr[current_offs + 4 + 1] & 1) << 16);
-		const u8 spritecont = spriteram16_ptr[current_offs + 4 + 0] >> 8;
+		const int sprite = spr[0] | ((spr[5] & 1) << 16);
+		const u8 spritecont = spr[4] >> 8;
 
 /* These games either don't set the XY control bits properly (68020 bug?), or
     have some different mode from the others */
@@ -2591,7 +2591,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		{
 			/* Bit 0x4 is 'use previous colour' for this block part */
 			if (spritecont & 0x4) color = last_color;
-			else color = (spriteram16_ptr[current_offs + 4 + 0]) & 0xff;
+			else color = spr[4] & 0xff;
 
 #ifdef DARIUSG_KLUDGE
 			if (m_game == DARIUSG || m_game == GEKIRIDO || m_game == CLEOPATR || m_game == RECALH)
@@ -2603,12 +2603,12 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 						x = block_x;
 					else
 					{
-						this_x = spriteram16_ptr[current_offs + 2 + 0] & 0xfff;
+						this_x = spr[2] & 0xfff;
 						this_x = util::sext(this_x, 12);
 
-						if ((spriteram16_ptr[current_offs + 2 + 0]) & 0x8000)
+						if (spr[2] & 0x8000)
 							this_x += 0;
-						else if ((spriteram16_ptr[current_offs + 2 + 0]) & 0x4000) /* Ignore subglobal (but apply global) */
+						else if (spr[2] & 0x4000) /* Ignore subglobal (but apply global) */
 							this_x += global_x;
 						else /* Apply both scroll offsets */
 							this_x += global_x + subglobal_x;
@@ -2632,12 +2632,12 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 						y = block_y;
 					else
 					{
-						this_y = spriteram16_ptr[current_offs + 2 + 1] & 0xfff;
+						this_y = spr[3] & 0xfff;
 						this_y = util::sext(this_y, 12);
 
-						if ((spriteram16_ptr[current_offs + 2 + 0]) & 0x8000)
+						if (spr[2] & 0x8000)
 							this_y += 0;
-						else if ((spriteram16_ptr[current_offs + 2 + 0]) & 0x4000) /* Ignore subglobal (but apply global) */
+						else if (spr[2] & 0x4000) /* Ignore subglobal (but apply global) */
 							this_y += global_y;
 						else /* Apply both scroll offsets */
 							this_y += global_y + subglobal_y;
@@ -2687,22 +2687,22 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		/* Else this sprite is the possible start of a block */
 		else
 		{
-			color = (spriteram16_ptr[current_offs + 4 + 0]) & 0xff;
+			color = spr[4] & 0xff;
 			last_color = color;
 
 			/* Sprite positioning */
-			this_x = spriteram16_ptr[current_offs + 2 + 0] & 0xfff;
-			this_y = spriteram16_ptr[current_offs + 2 + 1] & 0xfff;
+			this_x = spr[2] & 0xfff;
+			this_y = spr[3] & 0xfff;
 			this_x = util::sext(this_x, 12);
 			this_y = util::sext(this_y, 12);
 
 			/* Ignore both scroll offsets for this block */
-			if ((spriteram16_ptr[current_offs + 2 + 0]) & 0x8000)
+			if (spr[2] & 0x8000)
 			{
 				this_x += 0;
 				this_y += 0;
 			}
-			else if ((spriteram16_ptr[current_offs + 2 + 0]) & 0x4000) /* Ignore subglobal (but apply global) */
+			else if (spr[2] & 0x4000) /* Ignore subglobal (but apply global) */
 			{
 				this_x += global_x;
 				this_y += global_y;
@@ -2718,8 +2718,8 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 			x = this_x;
 			block_x = this_x;
 
-			block_zoom_x = spriteram16_ptr[current_offs + 0 + 1];
-			block_zoom_y = spriteram16_ptr[current_offs + 0 + 1] >> 8;
+			block_zoom_x = spr[1] & 0xFF;
+			block_zoom_y = spr[1] >> 8;
 
 			x_addition_left = 8;
 			calc_zoom(x_addition, x_addition_left, block_zoom_x);
