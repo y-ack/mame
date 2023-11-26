@@ -2578,13 +2578,16 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		const int sprite = spr[0] | (BIT(spr[5], 0) << 16);
 		const u8 spritecont = spr[4] >> 8;
 
-/* These games either don't set the XY control bits properly (68020 bug?), or
-    have some different mode from the others */
 #ifdef DARIUSG_KLUDGE
-		if (m_game == DARIUSG || m_game == GEKIRIDO || m_game == CLEOPATR || m_game == RECALH)
-			multi = spritecont & 0xf0;
+		/* These games either don't set the XY control bits properly (68020 bug?), or have some different mode from the others */
+		const bool dariusg_kludge = m_game == DARIUSG || m_game == GEKIRIDO || m_game == CLEOPATR || m_game == RECALH;
+#else
+		const bool dariusg_kludge = false;
 #endif
-
+		
+		if (dariusg_kludge)
+			multi = BIT(spritecont, 4, 4);
+		
 		/* Check if this sprite is part of a continued block */
 		if (multi)
 		{
@@ -2592,69 +2595,37 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 			/* Bit 0x4 is 'use previous colour' for this block part */
 			if (reuse_color) color = last_color;
 			else color = spr[4] & 0xff;
-
-#ifdef DARIUSG_KLUDGE
-			if (m_game == DARIUSG || m_game == GEKIRIDO || m_game == CLEOPATR || m_game == RECALH)
+			
+			/* Adjust X Position */
+			if (!BIT(spritecont, 6))
 			{
-				/* Adjust X Position */
-				if (!BIT(spritecont, 6))
-				{
-					if (!reuse_color)
-						block_x = this_x;
-					x = block_x;
-					x_addition_left = 8;
-					calc_zoom(x_addition, x_addition_left, block_zoom_x);
-				}
-				else if (BIT(spritecont, 7))
-				{
-					x = last_x + x_addition;
-					calc_zoom(x_addition, x_addition_left, block_zoom_x);
-				}
-
-				/* Adjust Y Position */
-				if (!BIT(spritecont, 4))
-				{
-					if (!reuse_color)
-						block_y = this_y;
-					y = block_y;
-					y_addition_left = 8;
-					calc_zoom(y_addition, y_addition_left, block_zoom_y);
-				}
-				else if (BIT(spritecont, 5))
-				{
-					y = last_y + y_addition;
-					calc_zoom(y_addition, y_addition_left, block_zoom_y);
-				}
+				if (dariusg_kludge && !reuse_color)
+					block_x = this_x;
+				x = block_x;
+				x_addition_left = 8;
+				calc_zoom(x_addition, x_addition_left, block_zoom_x);
 			}
-			else
-#endif
+			else if (BIT(spritecont, 7))
 			{
-				/* Adjust X Position */
-				if (!BIT(spritecont, 6))
-				{
-					x = block_x;
-					x_addition_left = 8;
-					calc_zoom(x_addition, x_addition_left, block_zoom_x);
-				}
-				else if (BIT(spritecont, 7))
-				{
-					x = last_x + x_addition;
-					calc_zoom(x_addition, x_addition_left, block_zoom_x);
-				}
-				/* Adjust Y Position */
-				if (!BIT(spritecont, 4))
-				{
-					y = block_y;
-					y_addition_left = 8;
-					calc_zoom(y_addition, y_addition_left, block_zoom_y);
-				}
-				else if (BIT(spritecont, 5))
-				{
-					y = last_y + y_addition;
-					calc_zoom(y_addition, y_addition_left, block_zoom_y);
-				}
-				/* Both zero = reread block latch? */
+				x = last_x + x_addition;
+				calc_zoom(x_addition, x_addition_left, block_zoom_x);
 			}
+
+			/* Adjust Y Position */
+			if (!BIT(spritecont, 4))
+			{
+				if (dariusg_kludge && !reuse_color)
+					block_y = this_y;
+				y = block_y;
+				y_addition_left = 8;
+				calc_zoom(y_addition, y_addition_left, block_zoom_y);
+			}
+			else if (BIT(spritecont, 5))
+			{
+				y = last_y + y_addition;
+				calc_zoom(y_addition, y_addition_left, block_zoom_y);
+			}
+			/* Both zero = reread block latch? */
 		}
 		/* Else this sprite is the possible start of a block */
 		else
