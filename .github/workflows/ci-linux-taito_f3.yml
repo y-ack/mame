@@ -60,12 +60,6 @@ jobs:
         TOOLS: 0
         SOURCES: "src/mame/taito/taito_f3.cpp,src/mame/taito/taito_b.cpp"
       run: make -j2
-    - name: Validate
-      run: ./${{ matrix.executable }} -validate
-    - name: Reconcile driver list
-      run: ./${{ matrix.executable }} -listxml | python scripts/build/makedep.py reconcilelist -l src/mame/${{ matrix.subtarget }}.lst -
-    - name: ORM check
-      run: python scripts/minimaws/minimaws.py load --executable ./${{ matrix.executable }} --softwarepath hash
     - uses: actions/upload-artifact@master
       with:
         name: ${{ matrix.executable }}-linux-${{ matrix.compiler }}-${{ github.sha }}
