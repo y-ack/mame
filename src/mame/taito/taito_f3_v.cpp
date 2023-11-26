@@ -2603,12 +2603,10 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 					block_x = this_x;
 				x = block_x;
 				x_addition_left = 8;
-				calc_zoom(x_addition, x_addition_left, block_zoom_x);
 			}
 			else if (BIT(spritecont, 7))
 			{
 				x = last_x + x_addition;
-				calc_zoom(x_addition, x_addition_left, block_zoom_x);
 			}
 
 			/* Adjust Y Position */
@@ -2618,12 +2616,10 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 					block_y = this_y;
 				y = block_y;
 				y_addition_left = 8;
-				calc_zoom(y_addition, y_addition_left, block_zoom_y);
 			}
 			else if (BIT(spritecont, 5))
 			{
 				y = last_y + y_addition;
-				calc_zoom(y_addition, y_addition_left, block_zoom_y);
 			}
 			/* Both zero = reread block latch? */
 		}
@@ -2641,11 +2637,11 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 			block_zoom_y = spr[1] >> 8;
 
 			x_addition_left = 8;
-			calc_zoom(x_addition, x_addition_left, block_zoom_x);
-
 			y_addition_left = 8;
-			calc_zoom(y_addition, y_addition_left, block_zoom_y);
 		}
+		
+		calc_zoom(x_addition, x_addition_left, block_zoom_x);
+		calc_zoom(y_addition, y_addition_left, block_zoom_y);
 
 		/* These features are common to sprite and block parts */
 		flipx = spritecont & 0x1;
