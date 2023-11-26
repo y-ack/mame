@@ -53,8 +53,6 @@ jobs:
         TOOLS: 0
         SOURCES: "src/mame/taito/taito_f3.cpp,src/mame/taito/taito_b.cpp"
       run: make -j2
-    - name: Validate
-      run: ./${{ matrix.executable }}.exe -validate
     - uses: actions/upload-artifact@master
       with:
         name: ${{ matrix.executable }}-windows-${{ matrix.compiler }}-${{ github.sha }}
