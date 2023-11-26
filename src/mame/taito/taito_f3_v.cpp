@@ -2542,47 +2542,36 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 			/* Sprite bank select */
 			if (BIT(cntrl, 0))
 			{
-				offs = offs | 0x4000;
-				sprite_top = sprite_top | 0x4000;
+				offs |= 0x4000;
+				sprite_top |= 0x4000;
 			}
 		}
 		
 		/* Sprite positioning */
-		this_x = util::sext(spr[2] & 0xfff, 12);
-		this_y = util::sext(spr[3] & 0xfff, 12);
+		this_x = util::sext(spr[2], 12);
+		this_y = util::sext(spr[3], 12);
 
-		u8 scroll_mode = BIT(spr[2], 12, 4);
-
-		if (scroll_mode == 0b1010) /* Set global sprite scroll */
-		{
-			global_x = this_x;
-			global_y = this_y;
-		}
-		else if (scroll_mode == 0b0101) /* And sub-global sprite scroll */
+		// set scroll offsets
+		if (BIT(spr[2], 12))
 		{
 			subglobal_x = this_x;
 			subglobal_y = this_y;
 		}
-		else if (scroll_mode == 0b1011)
+		if (BIT(spr[2], 13))
 		{
-			global_y = subglobal_x = this_x;
-			global_x = subglobal_y = this_y;
+			global_x = this_x;
+			global_y = this_y;
 		}
-		
-		if (BIT(scroll_mode, 3)) /* Ignore both scroll offsets for this block (1?) */
+		// add scroll offsets
+		if (!BIT(spr[2], 14))
 		{
-			this_x += 0;
-			this_y += 0;
+			this_x += subglobal_x;
+			this_y += subglobal_y;
 		}
-		else if (BIT(scroll_mode, 2)) /* Ignore subglobal (but apply global) (01) */
+		if (!BIT(spr[2], 15))
 		{
 			this_x += global_x;
 			this_y += global_y;
-		}
-		else /* Apply both scroll offsets (00) */
-		{
-			this_x += global_x + subglobal_x;
-			this_y += global_y + subglobal_y;
 		}
 		
 		/* A real sprite to process! */
