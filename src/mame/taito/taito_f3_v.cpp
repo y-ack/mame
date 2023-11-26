@@ -2510,9 +2510,9 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 	for (int offs = 0; offs < sprite_top && (total_sprites < 0x400); offs += 8)
 	{
 		const u16 *spr = &spriteram16_ptr[offs]; /* Offs can change during loop, spr cannot */
-		
+
 		/* Check if the sprite list jump command bit is set */
-		if (spr[6] & 0x8000)
+		if (BIT(spr[6], 15))
 		{
 			const u32 jump = spr[6] & 0x3ff;
 
@@ -2523,10 +2523,10 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		}
 
 		/* Check if special command bit is set */
-		if (spr[3] & 0x8000)
+		if (BIT(spr[3], 15))
 		{
 			const u16 cntrl = spr[5];
-			m_flipscreen = cntrl & 0x2000;
+			m_flipscreen = BIT(cntrl, 13);
 
 			/*  cntrl & 0x1000 = disabled?  (From F2 driver, doesn't seem used anywhere)
 			    cntrl & 0x0010 = ???
@@ -2536,47 +2536,57 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 			             alpha routines.
 			*/
 
-			m_sprite_extra_planes = (cntrl & 0x0300) >> 8;   // 0 = 4bpp, 1 = 5bpp, 2 = unused?, 3 = 6bpp
+			m_sprite_extra_planes = BIT(cntrl, 8, 2);   // 0 = 4bpp, 1 = 5bpp, 2 = unused?, 3 = 6bpp
 			m_sprite_pen_mask = (m_sprite_extra_planes << 4) | 0x0f;
 
 			/* Sprite bank select */
-			if (cntrl & 1)
+			if (BIT(cntrl, 0))
 			{
 				offs = offs | 0x4000;
 				sprite_top = sprite_top | 0x4000;
 			}
 		}
+		
+		/* Sprite positioning */
+		this_x = util::sext(spr[2] & 0xfff, 12);
+		this_y = util::sext(spr[3] & 0xfff, 12);
 
-		/* Set global sprite scroll */
-		if ((spr[2] & 0xf000) == 0xa000)
+		u8 scroll_mode = BIT(spr[2], 12, 4);
+
+		if (scroll_mode == 0b1010) /* Set global sprite scroll */
 		{
-			global_x = spr[2] & 0xfff;
-			global_x = util::sext(global_x, 12);
-			global_y = spr[3] & 0xfff;
-			global_y = util::sext(global_y, 12);
+			global_x = this_x;
+			global_y = this_y;
 		}
-
-		/* And sub-global sprite scroll */
-		if ((spr[2] & 0xf000) == 0x5000)
+		else if (scroll_mode == 0b0101) /* And sub-global sprite scroll */
 		{
-			subglobal_x = spr[2] & 0xfff;
-			subglobal_x = util::sext(subglobal_x, 12);
-			subglobal_y = spr[3] & 0xfff;
-			subglobal_y = util::sext(subglobal_y, 12);
+			subglobal_x = this_x;
+			subglobal_y = this_y;
 		}
-
-		if ((spr[2] & 0xf000) == 0xb000)
+		else if (scroll_mode == 0b1011)
 		{
-			subglobal_x = spr[2] & 0xfff;
-			subglobal_x = util::sext(subglobal_x, 12);
-			subglobal_y = spr[3] & 0xfff;
-			subglobal_y = util::sext(subglobal_y, 12);
-			global_y = subglobal_y;
-			global_x = subglobal_x;
+			global_y = subglobal_x = this_x;
+			global_x = subglobal_y = this_y;
 		}
-
+		
+		if (BIT(scroll_mode, 3)) /* Ignore both scroll offsets for this block (1?) */
+		{
+			this_x += 0;
+			this_y += 0;
+		}
+		else if (BIT(scroll_mode, 2)) /* Ignore subglobal (but apply global) (01) */
+		{
+			this_x += global_x;
+			this_y += global_y;
+		}
+		else /* Apply both scroll offsets (00) */
+		{
+			this_x += global_x + subglobal_x;
+			this_y += global_y + subglobal_y;
+		}
+		
 		/* A real sprite to process! */
-		const int sprite = spr[0] | ((spr[5] & 1) << 16);
+		const int sprite = spr[0] | (BIT(spr[5], 0) << 16);
 		const u8 spritecont = spr[4] >> 8;
 
 /* These games either don't set the XY control bits properly (68020 bug?), or
@@ -2589,66 +2599,39 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		/* Check if this sprite is part of a continued block */
 		if (multi)
 		{
+			bool reuse_color = BIT(spritecont, 2);
 			/* Bit 0x4 is 'use previous colour' for this block part */
-			if (spritecont & 0x4) color = last_color;
+			if (reuse_color) color = last_color;
 			else color = spr[4] & 0xff;
 
 #ifdef DARIUSG_KLUDGE
 			if (m_game == DARIUSG || m_game == GEKIRIDO || m_game == CLEOPATR || m_game == RECALH)
 			{
 				/* Adjust X Position */
-				if ((spritecont & 0x40) == 0)
+				if (!BIT(spritecont, 6))
 				{
-					if (spritecont & 0x4)
-						x = block_x;
-					else
-					{
-						this_x = spr[2] & 0xfff;
-						this_x = util::sext(this_x, 12);
-
-						if (spr[2] & 0x8000)
-							this_x += 0;
-						else if (spr[2] & 0x4000) /* Ignore subglobal (but apply global) */
-							this_x += global_x;
-						else /* Apply both scroll offsets */
-							this_x += global_x + subglobal_x;
-
+					if (!reuse_color)
 						block_x = this_x;
-						x = this_x;
-					}
+					x = block_x;
 					x_addition_left = 8;
 					calc_zoom(x_addition, x_addition_left, block_zoom_x);
 				}
-				else if ((spritecont & 0x80) != 0)
+				else if (BIT(spritecont, 7))
 				{
 					x = last_x + x_addition;
 					calc_zoom(x_addition, x_addition_left, block_zoom_x);
 				}
 
 				/* Adjust Y Position */
-				if ((spritecont & 0x10) == 0)
+				if (!BIT(spritecont, 4))
 				{
-					if (spritecont & 0x4)
-						y = block_y;
-					else
-					{
-						this_y = spr[3] & 0xfff;
-						this_y = util::sext(this_y, 12);
-
-						if (spr[2] & 0x8000)
-							this_y += 0;
-						else if (spr[2] & 0x4000) /* Ignore subglobal (but apply global) */
-							this_y += global_y;
-						else /* Apply both scroll offsets */
-							this_y += global_y + subglobal_y;
-
+					if (!reuse_color)
 						block_y = this_y;
-						y = this_y;
-					}
+					y = block_y;
 					y_addition_left = 8;
 					calc_zoom(y_addition, y_addition_left, block_zoom_y);
 				}
-				else if ((spritecont & 0x20) != 0)
+				else if (BIT(spritecont, 5))
 				{
 					y = last_y + y_addition;
 					calc_zoom(y_addition, y_addition_left, block_zoom_y);
@@ -2658,25 +2641,25 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 #endif
 			{
 				/* Adjust X Position */
-				if ((spritecont & 0x40) == 0)
+				if (!BIT(spritecont, 6))
 				{
 					x = block_x;
 					x_addition_left = 8;
 					calc_zoom(x_addition, x_addition_left, block_zoom_x);
 				}
-				else if ((spritecont & 0x80) != 0)
+				else if (BIT(spritecont, 7))
 				{
 					x = last_x + x_addition;
 					calc_zoom(x_addition, x_addition_left, block_zoom_x);
 				}
 				/* Adjust Y Position */
-				if ((spritecont & 0x10) == 0)
+				if (!BIT(spritecont, 4))
 				{
 					y = block_y;
 					y_addition_left = 8;
 					calc_zoom(y_addition, y_addition_left, block_zoom_y);
 				}
-				else if ((spritecont & 0x20) != 0)
+				else if (BIT(spritecont, 5))
 				{
 					y = last_y + y_addition;
 					calc_zoom(y_addition, y_addition_left, block_zoom_y);
@@ -2690,33 +2673,10 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 			color = spr[4] & 0xff;
 			last_color = color;
 
-			/* Sprite positioning */
-			this_x = spr[2] & 0xfff;
-			this_y = spr[3] & 0xfff;
-			this_x = util::sext(this_x, 12);
-			this_y = util::sext(this_y, 12);
-
-			/* Ignore both scroll offsets for this block */
-			if (spr[2] & 0x8000)
-			{
-				this_x += 0;
-				this_y += 0;
-			}
-			else if (spr[2] & 0x4000) /* Ignore subglobal (but apply global) */
-			{
-				this_x += global_x;
-				this_y += global_y;
-			}
-			else /* Apply both scroll offsets */
-			{
-				this_x += global_x + subglobal_x;
-				this_y += global_y + subglobal_y;
-			}
-
-			y = this_y;
+			block_x = this_x;
 			block_y = this_y;
 			x = this_x;
-			block_x = this_x;
+			y = this_y;
 
 			block_zoom_x = spr[1] & 0xFF;
 			block_zoom_y = spr[1] >> 8;
