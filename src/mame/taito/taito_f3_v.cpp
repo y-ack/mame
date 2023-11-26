@@ -2532,22 +2532,21 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		/* Check if special command bit is set */
 		if (BIT(spr[3], 15))
 		{
-			const u16 cntrl = spr[5];
-			m_flipscreen = BIT(cntrl, 13);
+			m_flipscreen = BIT(spr[5], 13);
 
-			/*  cntrl & 0x1000 = disabled?  (From F2 driver, doesn't seem used anywhere)
-			    cntrl & 0x0010 = ???
-			    cntrl & 0x0020 = ???
-			    cntrl & 0x0002 = enabled when Darius Gaiden sprite trail effect should occur (MT #1922)
+			/*  spr[5] & 0x1000 = disabled?  (From F2 driver, doesn't seem used anywhere)
+			    spr[5] & 0x0010 = ???
+			    spr[5] & 0x0020 = ???
+			    spr[5] & 0x0002 = enabled when Darius Gaiden sprite trail effect should occur (MT #1922)
 			                     Notice that sprites also completely disappear due of a bug/missing feature in the
 			             alpha routines.
 			*/
 
-			m_sprite_extra_planes = BIT(cntrl, 8, 2);   // 0 = 4bpp, 1 = 5bpp, 2 = unused?, 3 = 6bpp
+			m_sprite_extra_planes = BIT(spr[5], 8, 2);   // 0 = 4bpp, 1 = 5bpp, 2 = unused?, 3 = 6bpp
 			m_sprite_pen_mask = (m_sprite_extra_planes << 4) | 0x0f;
 
 			/* Sprite bank select */
-			if (BIT(cntrl, 0))
+			if (BIT(spr[5], 0))
 			{
 				offs |= 0x4000;
 				sprite_top |= 0x4000;
@@ -2605,9 +2604,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 				x_addition_left = 8;
 			}
 			else if (BIT(spritecont, 7))
-			{
 				x = last_x + x_addition;
-			}
 
 			/* Adjust Y Position */
 			if (!BIT(spritecont, 4))
@@ -2618,9 +2615,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 				y_addition_left = 8;
 			}
 			else if (BIT(spritecont, 5))
-			{
 				y = last_y + y_addition;
-			}
 			/* Both zero = reread block latch? */
 		}
 		/* Else this sprite is the possible start of a block */
@@ -2639,40 +2634,29 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 			x_addition_left = 8;
 			y_addition_left = 8;
 		}
-		
+		/* TODO: check if these are actually supposed to run in all cases. i think if the block control bits are 0.. */
 		calc_zoom(x_addition, x_addition_left, block_zoom_x);
 		calc_zoom(y_addition, y_addition_left, block_zoom_y);
 
 		/* These features are common to sprite and block parts */
-		flipx = spritecont & 0x1;
-		flipy = spritecont & 0x2;
-		multi = spritecont & 0x8;
+		flipx = BIT(spritecont, 0);
+		flipy = BIT(spritecont, 1);
+		multi = BIT(spritecont, 3);
 		last_x = x;
 		last_y = y;
 
 		if (!sprite) continue;
 		if (!x_addition || !y_addition) continue;
 
-		if (m_flipscreen)
-		{
-			const int tx = 512 - x_addition - x;
-			const int ty = 256 - y_addition - y;
-
-			if (tx + x_addition <= min_x || tx > max_x || ty + y_addition <= min_y || ty > max_y) continue;
-			sprite_ptr->x = tx;
-			sprite_ptr->y = ty;
-			sprite_ptr->flipx = !flipx;
-			sprite_ptr->flipy = !flipy;
-		}
-		else
-		{
-			if (x + x_addition <= min_x || x > max_x || y + y_addition <= min_y || y > max_y) continue;
-			sprite_ptr->x = x;
-			sprite_ptr->y = y;
-			sprite_ptr->flipx = flipx;
-			sprite_ptr->flipy = flipy;
-		}
-
+		const int tx = m_flipscreen ? 512 - x_addition - x : x;
+		const int ty = m_flipscreen ? 256 - y_addition - y : y;
+		if (tx + x_addition <= min_x || tx > max_x || ty + y_addition <= min_y || ty > max_y)
+			continue;
+		
+		sprite_ptr->x = tx;
+		sprite_ptr->y = ty;
+		sprite_ptr->flipx = m_flipscreen ? !flipx : flipx;
+		sprite_ptr->flipy = m_flipscreen ? !flipy : flipy;
 		sprite_ptr->code = sprite;
 		sprite_ptr->color = color;
 		sprite_ptr->zoomx = x_addition;
