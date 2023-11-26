@@ -2484,6 +2484,13 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		// zoom = addition << 12;
 	};
 
+#ifdef DARIUSG_KLUDGE
+	/* These games either don't set the XY control bits properly (68020 bug?), or have some different mode from the others */
+	const bool dariusg_kludge = m_game == DARIUSG || m_game == GEKIRIDO || m_game == CLEOPATR || m_game == RECALH;
+#else
+	const bool dariusg_kludge = false;
+#endif
+
 	const rectangle &visarea = m_screen->visible_area();
 	const int min_x = visarea.min_x, max_x = visarea.max_x;
 	const int min_y = visarea.min_y, max_y = visarea.max_y;
@@ -2501,7 +2508,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 
 	int total_sprites = 0;
 
-	u8 color = 0, last_color = 0;
+	u8 color = 0, block_color = 0;
 	bool flipx = 0, flipy = 0;
 	//int old_x = 0;
 	s16 y = 0, x = 0;
@@ -2578,12 +2585,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		const int sprite = spr[0] | (BIT(spr[5], 0) << 16);
 		const u8 spritecont = spr[4] >> 8;
 
-#ifdef DARIUSG_KLUDGE
-		/* These games either don't set the XY control bits properly (68020 bug?), or have some different mode from the others */
-		const bool dariusg_kludge = m_game == DARIUSG || m_game == GEKIRIDO || m_game == CLEOPATR || m_game == RECALH;
-#else
-		const bool dariusg_kludge = false;
-#endif
+		color = spr[4] & 0xff;
 		
 		if (dariusg_kludge)
 			multi = BIT(spritecont, 4, 4);
@@ -2592,10 +2594,8 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		if (multi)
 		{
 			bool reuse_color = BIT(spritecont, 2);
-			/* Bit 0x4 is 'use previous colour' for this block part */
-			if (reuse_color) color = last_color;
-			else color = spr[4] & 0xff;
-			
+			if (reuse_color) color = block_color;
+
 			/* Adjust X Position */
 			if (!BIT(spritecont, 6))
 			{
@@ -2630,8 +2630,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		/* Else this sprite is the possible start of a block */
 		else
 		{
-			color = spr[4] & 0xff;
-			last_color = color;
+			block_color = color;
 
 			block_x = this_x;
 			block_y = this_y;
