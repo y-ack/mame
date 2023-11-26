@@ -1,4 +1,4 @@
-name: CI (Windows)
+name: CI (Windows) (Taito F3)
 
 on:
   push:
