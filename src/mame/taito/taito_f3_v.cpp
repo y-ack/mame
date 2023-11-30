@@ -2490,7 +2490,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 {
 	const auto calc_zoom = [](u16 &addition, u8 &addition_left, u8 block_zoom)
 	{
-		u16 temp = block_zoom + addition_left;
+		u16 temp = (0x100 - block_zoom) + addition_left;
 		addition_left = temp & 0xF;
 		addition = temp >> 4;
 		// zoom = addition << 12;
@@ -2502,7 +2502,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 	s16 global_x = 0, global_y = 0, subglobal_x = 0, subglobal_y = 0;
 	s16 block_x = 0, block_y = 0;
 	
-	u16 block_zoom_x = 0x100, block_zoom_y = 0x100;
+	u8 block_zoom_x = 0, block_zoom_y = 0;
 	u16 y_addition = 16, x_addition = 16;
 	u8 x_addition_left = 8, y_addition_left = 8;
 	
@@ -2583,42 +2583,30 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		bool lock = BIT(spritecont, 2);
 		if (!lock) {
 			color = spr[4] & 0xff;
-			block_zoom_x = 0x100 - (spr[1] & 0xFF);
-			block_zoom_y = 0x100 - (spr[1] >> 8);
+			block_zoom_x = spr[1] & 0xFF;
+			block_zoom_y = spr[1] >> 8;
 		}
 		
 		/* Adjust X Position */
-		switch (BIT(spritecont, 6, 2)) {
-		case 0b00:
-			block_x = this_x;
-			[[fallthrough]];
-		case 0b10:
+		if (!BIT(spritecont, 6)) {
+			if (!BIT(spritecont, 7) && !lock)
+				block_x = this_x;
 			x = block_x;
 			x_addition_left = 8;
 			calc_zoom(x_addition, x_addition_left, block_zoom_x);
-			break;
-		case 0b11:
+		} else if (BIT(spritecont, 7)) {
 			x += x_addition;
 			calc_zoom(x_addition, x_addition_left, block_zoom_x);
-			break;
-		case 0b01:
-			break;
 		}
-		switch (BIT(spritecont, 4, 2)) {
-		case 0b00:
-			block_y = this_y;
-			[[fallthrough]];
-		case 0b10:
+		if (!BIT(spritecont, 4)) {
+			if (!BIT(spritecont, 5) && !lock)
+				block_y = this_y;
 			y = block_y;
 			y_addition_left = 8;
 			calc_zoom(y_addition, y_addition_left, block_zoom_y);
-			break;
-		case 0b11:
+		} else if (BIT(spritecont, 5)) {
 			y += y_addition;
 			calc_zoom(y_addition, y_addition_left, block_zoom_y);
-			break;
-		case 0b01:
-			break;
 		}
 		
 		const int tile = spr[0] | (BIT(spr[5], 0) << 16);
