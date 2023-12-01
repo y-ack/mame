@@ -2474,17 +2474,48 @@ inline void taito_f3_state::f3_drawgfx(bitmap_rgb32 &dest_bmp, const rectangle &
 	}
 }
 
-/*struct sprite_axis {
+struct sprite_axis {
 	u16 addition;
 	u8 addition_left;
 	u8 block_zoom;
+	s16 pos, block_pos, global, subglobal;
 	void calc() {
 		addition = 0x100 - block_zoom + addition_left;
 		addition_left = addition & 0xf;
 		addition = addition >> 4;
 		// zoom = addition << 12;
 	};
-	};*/
+	void update(u8 ctrl, u16 posw, u8 new_zoom, bool lock, u8 block_ctrl) {
+		s16 new_pos = util::sext(posw, 12);
+		// set scroll offsets
+		if (BIT(ctrl, 0))
+			subglobal = new_pos;
+		if (BIT(ctrl, 1))
+			global = new_pos;
+		// add scroll offsets
+		if (!BIT(ctrl, 3))
+			new_pos += subglobal;
+		if (!BIT(ctrl, 4))
+			new_pos += global;
+		
+		switch (ctrl) {
+		case 0b00:
+			if (!lock) {
+				block_pos = new_pos;
+				block_zoom = new_zoom;
+			}
+			[[fallthrough]];
+		case 0b10:
+			pos = block_pos;
+			addition_left = 8;
+			calc_zoom();
+			break;
+		case 0b11:
+			pos += addition;
+			calc_zoom();
+		}
+	};
+};
 
 void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 {
@@ -2501,14 +2532,13 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 	const rectangle &visarea = m_screen->visible_area();
 	s16 global_x = 0, global_y = 0, subglobal_x = 0, subglobal_y = 0;
 	s16 block_x = 0, block_y = 0;
+	s16 y = 0, x = 0;
+	u8 color = 0;
 	
 	u8 block_zoom_x = 0, block_zoom_y = 0;
 	u16 y_addition = 16, x_addition = 16;
 	u8 x_addition_left = 8, y_addition_left = 8;
-	
 	//bool multi = false;
-	u8 color = 0;
-	s16 y = 0, x = 0;
 	
 	tempsprite *sprite_ptr = &m_spritelist[0];
 	int total_sprites = 0;
@@ -2584,29 +2614,37 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		if (!lock) {
 			color = spr[4] & 0xff;
 		}
-		
-		/* Adjust X Position */
-		if (!BIT(spritecont, 6)) {
-			if (!BIT(spritecont, 7) && !lock) {
+
+		switch (BIT(spritecont, 6, 2)) {
+		case 0b00:
+			if (!lock) {
 				block_x = this_x;
 				block_zoom_x = spr[1] & 0xFF;
 			}
+			[[fallthrough]];
+		case 0b10:
 			x = block_x;
 			x_addition_left = 8;
 			calc_zoom(x_addition, x_addition_left, block_zoom_x);
-		} else if (BIT(spritecont, 7)) {
+			break;
+		case 0b11:
 			x += x_addition;
 			calc_zoom(x_addition, x_addition_left, block_zoom_x);
 		}
-		if (!BIT(spritecont, 4)) {
-			if (!BIT(spritecont, 5) && !lock) {
+		
+		switch (BIT(spritecont, 4, 2)) {
+		case 0b00:
+			if (!lock) {
 				block_y = this_y;
 				block_zoom_y = spr[1] >> 8;
 			}
+			[[fallthrough]];
+		case 0b10:
 			y = block_y;
 			y_addition_left = 8;
 			calc_zoom(y_addition, y_addition_left, block_zoom_y);
-		} else if (BIT(spritecont, 5)) {
+			break;
+		case 0b11:
 			y += y_addition;
 			calc_zoom(y_addition, y_addition_left, block_zoom_y);
 		}
