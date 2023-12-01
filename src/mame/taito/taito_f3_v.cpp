@@ -2583,14 +2583,14 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		bool lock = BIT(spritecont, 2);
 		if (!lock) {
 			color = spr[4] & 0xff;
-			block_zoom_x = spr[1] & 0xFF;
-			block_zoom_y = spr[1] >> 8;
 		}
 		
 		/* Adjust X Position */
 		if (!BIT(spritecont, 6)) {
-			if (!BIT(spritecont, 7) && !lock)
+			if (!BIT(spritecont, 7) && !lock) {
 				block_x = this_x;
+				block_zoom_x = spr[1] & 0xFF;
+			}
 			x = block_x;
 			x_addition_left = 8;
 			calc_zoom(x_addition, x_addition_left, block_zoom_x);
@@ -2599,8 +2599,10 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 			calc_zoom(x_addition, x_addition_left, block_zoom_x);
 		}
 		if (!BIT(spritecont, 4)) {
-			if (!BIT(spritecont, 5) && !lock)
+			if (!BIT(spritecont, 5) && !lock) {
 				block_y = this_y;
+				block_zoom_y = spr[1] >> 8;
+			}
 			y = block_y;
 			y_addition_left = 8;
 			calc_zoom(y_addition, y_addition_left, block_zoom_y);
