@@ -2383,7 +2383,7 @@ inline void taito_f3_state::f3_drawgfx(bitmap_rgb32 &dest_bmp, const rectangle &
 
 	if (gfx)
 	{
-		const pen_t *pal = &m_palette->pen(gfx->colorbase() + 0);
+		const pen_t *pal = &m_palette->pen(gfx->colorbase() + gfx->granularity() * (color % gfx->colors()));
 		const u8 *code_base = gfx->get_data(code % gfx->elements());
 
 		{
@@ -2460,7 +2460,7 @@ inline void taito_f3_state::f3_drawgfx(bitmap_rgb32 &dest_bmp, const rectangle &
 								const u8 p = pri[x];
 								if (p == 0 || p == 0xff)
 								{
-									dest[x] = pal[c | color<<4];
+									dest[x] = pal[c];
 									pri[x] = pri_dst;
 								}
 							}
@@ -2474,64 +2474,71 @@ inline void taito_f3_state::f3_drawgfx(bitmap_rgb32 &dest_bmp, const rectangle &
 	}
 }
 
-struct sprite_axis {
-	u16 addition = 16;
-	u8 addition_left = 8;
-	u8 block_zoom = 0;
-	s16 pos = 0, block_pos = 0, global = 0, subglobal = 0;
-	void calc_zoom() {
-		addition = 0x100 - block_zoom + addition_left;
-		addition_left = addition & 0xf;
-		addition = addition >> 4;
-		// zoom = addition << 12;
-	};
-	void update(u8 scroll, u16 posw, bool lock, u8 block_ctrl, u8 new_zoom) {
-		s16 new_pos = util::sext(posw, 12);
-		// set scroll offsets
-		if (BIT(scroll, 0))
-			subglobal = new_pos;
-		if (BIT(scroll, 1))
-			global = new_pos;
-		// add scroll offsets
-		if (!BIT(scroll, 2))
-			new_pos += subglobal;
-		if (!BIT(scroll, 3))
-			new_pos += global;
-		
-		switch (block_ctrl) {
-		case 0b00:
-			if (!lock) {
-				block_pos = new_pos;
-				block_zoom = new_zoom;
-			}
-			[[fallthrough]];
-		case 0b10:
-			pos = block_pos;
-			addition_left = 8;
-			calc_zoom();
-			break;
-		case 0b11:
-			pos += addition;
-			calc_zoom();
-		}
-	};
-};
-
 void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 {
-	const rectangle &visarea = m_screen->visible_area();
+	struct sprite_axis
+	{
+		u16 addition = 16;
+		u8 addition_left = 8;
+		u8 block_zoom = 0;
+		s16 pos = 0, block_pos = 0, global = 0, subglobal = 0;
+		void calc_zoom()
+		{
+			addition = 0x100 - block_zoom + addition_left;
+			addition_left = addition & 0xf;
+			addition = addition >> 4;
+			// zoom = addition << 12;
+		};
+		void update(u8 scroll, u16 posw, bool lock, u8 block_ctrl, u8 new_zoom)
+		{
+			s16 new_pos = util::sext(posw, 12);
+			// set scroll offsets
+			if (BIT(scroll, 0))
+				subglobal = new_pos;
+			if (BIT(scroll, 1))
+				global = new_pos;
+			// add scroll offsets
+			if (!BIT(scroll, 2))
+				new_pos += subglobal;
+			if (!BIT(scroll, 3))
+				new_pos += global;
+		
+			switch (block_ctrl)
+			{
+			case 0b00:
+				if (!lock)
+				{
+					block_pos = new_pos;
+					block_zoom = new_zoom;
+				}
+				[[fallthrough]];
+			case 0b10:
+				pos = block_pos;
+				addition_left = 8;
+				calc_zoom();
+				break;
+			case 0b11:
+				pos += addition;
+				calc_zoom();
+			}
+		};
+	};
 	sprite_axis x, y;
 	u8 color = 0;
 	//bool multi = false;
 	
+	const rectangle &visarea = m_screen->visible_area();
+	
 	tempsprite *sprite_ptr = &m_spritelist[0];
 	int total_sprites = 0;
 	u16 sprite_top = 0x2000;
-	for (int offs = 0; offs < sprite_top && (total_sprites < 0x400); offs += 8) {
+	for (int offs = 0; offs < sprite_top && (total_sprites < 0x400); offs += 8)
+	{
 		const u16 *spr = &spriteram16_ptr[offs];
 
 		/* Check if the sprite list jump command bit is set */
-		if (BIT(spr[6], 15)) {
+		if (BIT(spr[6], 15))
+		{
 			const u32 new_offs = ((BIT(spr[6], 0, 10) << 4) / 2) | (offs & 0x4000);
 			if (new_offs == offs) // could this be ≤ ?
 				break;
@@ -2539,7 +2546,8 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		}
 
 		/* Check if special command bit is set */
-		if (BIT(spr[3], 15)) {
+		if (BIT(spr[3], 15))
+		{
 			u16 cntrl = spr[5];
 			m_flipscreen = BIT(cntrl, 13);
 
@@ -2554,7 +2562,8 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 			m_sprite_pen_mask = (m_sprite_extra_planes << 4) | 0x0f;
 
 			/* Sprite bank select */
-			if (BIT(cntrl, 0)) {
+			if (BIT(cntrl, 0))
+			{
 				offs |= 0x4000;
 				sprite_top |= 0x4000;
 			}
@@ -2620,7 +2629,7 @@ void taito_f3_state::draw_sprites(bitmap_rgb32 &bitmap, const rectangle &cliprec
 		f3_drawgfx(
 				bitmap, cliprect, sprite_gfx,
 				sprite_ptr->code,
-				sprite_ptr->color,
+				sprite_ptr->color & (~m_sprite_extra_planes),
 				sprite_ptr->flipx, sprite_ptr->flipy,
 				sprite_ptr->x, sprite_ptr->y,
 				sprite_ptr->zoomx, sprite_ptr->zoomy,
