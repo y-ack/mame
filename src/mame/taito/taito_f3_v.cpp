@@ -211,9 +211,12 @@ Line ram memory map:
      s: set global/subglobal scroll
      x: x position (signed 12 bits)
     
-    word 3: [c... yyyy yyyy yyyy]
+    word 3: [c.BA yyyy yyyy yyyy]
      c: special command (parameters are in word 5) 
+     B: ??? set by gseeker on a special command (also sets word 3 to FFEE: probably a position overflow again)
+     A: ??? set by ridingf on ACTUAL SPRITES during gameplay - probably just the position overflowing
      y: y position (signed 12 bits)
+     (???) ridingf sets this word to 0x9000 at 0x3710, and 0x9001 at 0xB710
     
     word 4: [bbbb mlyx cccc cccc]
      b: block position controls
@@ -225,11 +228,13 @@ Line ram memory map:
     
     word 5: [.... .... .... ...h] (normal sprite)
      h: upper bit of tile number
-    word 5: [..f? ..pp ..?? ..tb] (if special command bit set)
+    word 5: [..fA ..pp ..?? ..tb] (if special command bit set)
      f: enable flipscreen
+     A: ??? set by ridingf
      p: enable extra planes (00 = 4bpp, 01 = 5bpp, 11 = 6bpp)
      t: enable sprite trails
      b: sprite bank to switch to
+     (???) ridingf sets this word to 1000/1001 at 0x3710 and 0xB710
     
     word 6: [j... ..ii iiii iiii]
      j: jump command if set
@@ -1423,10 +1428,28 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 
 			m_sprite_extra_planes = BIT(cntrl, 8, 2); // 00 = 4bpp, 01 = 5bpp, 10 = unused?, 11 = 6bpp
 			m_sprite_pen_mask = (m_sprite_extra_planes << 4) | 0x0f;
-			m_sprite_trails = BIT(ctrl, 1);
+			m_sprite_trails = BIT(cntrl, 1);
 
+			if (cntrl & 0b1101'1100'1111'1100) {
+				logerror("unknown sprite command bits: %4x\n", cntrl);
+			}
+			
 			/* Sprite bank select */
 			m_sprite_bank = BIT(cntrl, 0);
+		} else {
+			if (spr[5]>>1) {
+				logerror("unknown word 5 bits: %4x\n", spr[5]);
+			}
+		}
+		
+		if (spr[7]!=0) {
+			logerror("unknown sprite word 7: %4x\n", spr[7]);
+		}
+		if (spr[3] & 0b0111'0000'0000'0000) {
+			logerror("unknown sprite y upper bits: %4x\n", spr[3]);
+		}
+		if (spr[6] & 0b0111'1100'0000'0000) {
+			logerror("unknown sprite jump bits: %4x\n", spr[6]);
 		}
 
 		/* Check if the sprite list jump bit is set */
