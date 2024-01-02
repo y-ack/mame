@@ -198,29 +198,45 @@ Line ram memory map:
 ****************************************************************************
 
     F3 sprite format:
-
-    Word 0: 0xffff      Tile number (LSB)
-    Word 1: 0xff00      X zoom
-            0x00ff      Y zoom
-    Word 2: 0x0fff      X position (12 bits signed)
-    Word 3: 0x0fff      Y position (12 bits signed)
-    Word 4: 0xf000      Sprite block position controls 
-            0x0800      Is child
-            0x0400      Reuse prev color
-            0x0200      Y flip
-            0x0100      X flip
-            0x00ff      Colour
-    Word 5: 0xc000      ? Unknown/unused?
-            0x2000      Flipscreen...?
-            0x1000      Sprite is disabled? (check Riding Fight)
-            0x0c00      ? Unknown/unused?
-            0x0300      Extra planes enable (00 = 4bpp, 01 = 5bpp, 11 = 6bpp)
-            0x00fc      ? Unknown/unused?
-            0x0002      Set during darius gaiden sprite trails (disable unblitting?)
-            0x0001      Tile number (MSB/bankswitch)
-    Word 6: 0x8000      If set, jump to sprite location in low bits
-            0x03ff      Location to jump to.
-    Word 7: 0xffff      Unused?  Always zero?
+    
+    word 0: [tttt tttt tttt tttt]
+     t: lower 16 bits of tile number
+    
+    word 1: [yyyy yyyy xxxx xxxx]
+     y: y zoom (scale factor is: (256-zoom)/256)
+     x: x zoom
+    
+    word 2: [iiss xxxx xxxx xxxx]
+     i: ignore global/subglobal scroll
+     s: set global/subglobal scroll
+     x: x position (signed 12 bits)
+    
+    word 3: [c... yyyy yyyy yyyy]
+     c: special command (parameters are in word 5) 
+     y: y position (signed 12 bits)
+    
+    word 4: [bbbb mlyx cccc cccc]
+     b: block position controls
+     m: "multi" ? has something to do with sprite blocks but i don't use it
+     l: "lock" (set to 0 on the first sprite in a block, 1 on all others)
+     y: y flip
+     x: x flip
+     c: color palette
+    
+    word 5: [.... .... .... ...h] (normal sprite)
+     h: upper bit of tile number
+    word 5: [..f? ..pp ..?? ..tb] (if special command bit set)
+     f: enable flipscreen
+     p: enable extra planes (00 = 4bpp, 01 = 5bpp, 11 = 6bpp)
+     t: enable sprite trails
+     b: sprite bank to switch to
+    
+    word 6: [j... ..ii iiii iiii]
+     j: jump command if set
+     i: index to jump to (0-1023)
+    
+    word 7: [.... .... .... ....] 
+     (unused)
 
 ****************************************************************************
 
@@ -563,6 +579,8 @@ void taito_f3_state::video_start()
 	m_gfxdecode->gfx(3)->set_granularity(16);
 
 	m_flipscreen = false;
+	m_sprite_bank = 0;
+	m_sprite_trails = false;
 	//memset(m_spriteram16_buffered.get(), 0, 0x10000);
 	memset(&m_spriteram[0], 0, 0x10000);
 
@@ -923,6 +941,8 @@ void taito_f3_state::get_pf_scroll(int pf_num, fixed8 &reg_sx, fixed8 &reg_sy)
 
 	sx -= (6 + 4 * pf_num) << 8;
 	sy += 1 << 8;
+	//sy -= 1; // or 2?   this was correct for the scaled playfield in ridingf, but causes a 1px offset in some playfields elsewhere
+	// e.g. puchicar sets y positions to 0xFF80,0xFFBF,0xFF80,0xFFBF (or something), different for each playfield ? why?    so these values have to round to the same thing  but if we add 1 then  it breaks
 
 	if (m_flipscreen) {
 		sx += (416+188) << 8;
@@ -1070,6 +1090,11 @@ void taito_f3_state::draw_line(pen_t* dst, f3_line_inf &line, int xs, int xe, pl
 	const u16 *src = &pf->srcbitmap->pix(y_index);
 	const u8 *flags = &pf->flagsbitmap->pix(y_index);
 
+	
+	if (y==200) {
+		//logerror("line#200: sx: %f, rowscroll: %f, scale: %f×\n", pf->reg_sx/256.0, pf->rowscroll/256.0, pf->x_scale/256.0);
+	}
+	
 	fixed8 fx_x = pf->reg_sx + pf->rowscroll;
 	fx_x += 10*((pf->x_scale)-(1<<8));
 	fx_x &= (m_width_mask << 8) | 0xff;
@@ -1206,6 +1231,22 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 						 [prio](auto a, auto b) {
 							 return std::visit(prio, a) > std::visit(prio, b); // was <
 						 });
+		
+		int line=100;
+		
+		bool print = y==line;
+		
+		int sprite_counts[4];
+		
+		if (print) {
+			logerror("-' %04x `------------------------- %d\n", line_data.blend, line);
+			
+			sprite_counts[0] = sprite_counts[1] = sprite_counts[2] = sprite_counts[3] = 0;
+		
+			for (auto* spr = m_sprite_end; spr-- != &m_spritelist[0]; ) {
+				sprite_counts[spr->pri]++;
+			}
+		}
 
 		// draw layers to framebuffer (currently top to bottom)
 		for (auto gfx : layers) {
@@ -1217,6 +1258,18 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 					std::vector<clip_plane_inf> clip_ranges = calc_clip(line_data.clip, arg);
 					for (const auto &clip : clip_ranges) {
 						draw_line(&bitmap.pix(y+ys), line_data, clip.l, clip.r, arg);
+					}
+				}
+				if (print) {
+					using T = std::decay_t<decltype(arg)>;
+					if constexpr (std::is_same_v<T, sprite_inf*>) {
+						int n = arg - &line_data.sp[0];
+						logerror("SP[%d]: %d,%d %d (count: %d)\n", n, arg->blend_b(), arg->blend_a(), arg->brightness, sprite_counts[n]);
+					} else if constexpr (std::is_same_v<T, playfield_inf*>) {
+						int n = arg - &line_data.pf[0];
+						logerror("PF[%d]: %d,%d .\n", n, arg->blend_b(), arg->blend_a());
+					} else if constexpr (std::is_same_v<T, pivot_inf*>) {
+						logerror("PIVOT: %d,%d .\n", arg->blend_b(), arg->blend_a());
 					}
 				}
 			}, gfx);
@@ -1272,7 +1325,7 @@ inline void taito_f3_state::f3_drawgfx(const tempsprite &sprite, const rectangle
 
 	fixed8 dy8 = (sprite.y);
 	if (!m_flipscreen)
-		dy8 += 255; // round up in non-flipscreen mode?    mayybe flipscreen coordinate adjustments should be done after all this math, during final rendering?. anyway:  testcases for vertical scaling: elvactr mission # text (non-flipscreen), kaiserknj attract mode first text line (flipscreen)
+		dy8 += 128; // round up in non-flipscreen mode?    mayybe flipscreen coordinate adjustments should be done after all this math, during final rendering?. anyway:  testcases for vertical scaling: elvactr mission # text (non-flipscreen), kaiserknj attract mode first text line (flipscreen)
 	for (u8 y = 0; y < 16; y++) {
 		const int dy = dy8 >> 8;
 		dy8 += sprite.scale_y;
@@ -1321,11 +1374,9 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 			if (!BIT(scroll, 3))
 				new_pos += global;
 
-			switch (block_ctrl)
-			{
+			switch (block_ctrl) {
 			case 0b00:
-				if (!lock)
-				{
+				if (!lock) {
 					block_pos = new_pos << 8;
 					block_scale = (0x100 - new_zoom);
 				}
@@ -1355,8 +1406,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		const u16 *spr = &spriteram16_ptr[bank + (offs * 8)];
 
 		/* Check if special command bit is set */
-		if (BIT(spr[3], 15))
-		{
+		if (BIT(spr[3], 15)) {
 			u16 cntrl = spr[5];
 			m_flipscreen = BIT(cntrl, 13);
 
@@ -1373,6 +1423,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 
 			m_sprite_extra_planes = BIT(cntrl, 8, 2); // 00 = 4bpp, 01 = 5bpp, 10 = unused?, 11 = 6bpp
 			m_sprite_pen_mask = (m_sprite_extra_planes << 4) | 0x0f;
+			m_sprite_trails = BIT(ctrl, 1);
 
 			/* Sprite bank select */
 			m_sprite_bank = BIT(cntrl, 0);
@@ -1380,6 +1431,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 
 		/* Check if the sprite list jump bit is set */
 		// we have to check this AFTER processing sprite commands because recalh uses a sprite command and jump in the same sprite
+		// i wonder if this should go after other sprite processsing as well?  can a regular sprite have a jump ?
 		if (BIT(spr[6], 15))
 		{
 			const int new_offs = BIT(spr[6], 0, 10);
@@ -1399,8 +1451,8 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		x.update(scroll_mode, spr[2] & 0xFFF, lock, BIT(spritecont, 4+2, 2), zooms & 0xFF);
 		y.update(scroll_mode, spr[3] & 0xFFF, lock, BIT(spritecont, 4+0, 2), zooms >> 8);
 
-		const int tile = spr[0] | (BIT(spr[5], 0) << 16);
-		if (!tile) continue;
+		int tile = spr[0] | (BIT(spr[5], 0) << 16);
+		if (!tile) continue; // todo: is this the correct way to tell if a sprite exists?
 
 		const fixed8 tx = m_flipscreen ? (512<<8) - x.block_scale*16 - x.pos : x.pos;
 		const fixed8 ty = m_flipscreen ? (256<<8) - y.block_scale*16 - y.pos : y.pos;
@@ -1428,10 +1480,11 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 
 void taito_f3_state::draw_sprites(const rectangle &cliprect)
 {
-	// todo: don't clear these if trails are enabled
-	m_pri_alp_bitmap.fill(0);
-	for (auto &sp_bitmap : m_sprite_framebuffers) {
-		sp_bitmap.fill(0);
+	if (!m_sprite_trails) {
+		m_pri_alp_bitmap.fill(0);
+		for (auto &sp_bitmap : m_sprite_framebuffers) {
+			sp_bitmap.fill(0);
+		}
 	}
 	
 	rectangle myclip = cliprect;
@@ -1448,7 +1501,7 @@ void taito_f3_state::draw_sprites(const rectangle &cliprect)
 /******************************************************************************/
 u32 taito_f3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	logerror("vpos screen update now: %d\n", m_screen->vpos());;
+	//logerror("vpos screen update now: %d\n", m_screen->vpos());;
 
 	machine().tilemap().set_flip_all(m_flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 

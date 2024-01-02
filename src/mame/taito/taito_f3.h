@@ -171,12 +171,12 @@ protected:
 	std::unique_ptr<u8[]> m_decoded_gfx5;
 
 	struct tempsprite {
-		u16 code = 0;
-		u8 color = 0;
-		bool flip_x = 0, flip_y = 0;
-		fixed8 x = 0, y = 0;
-		fixed8 scale_x = 0, scale_y = 0;
-		u8 pri = 0;
+		u16 code;
+		u8 color;
+		bool flip_x, flip_y;
+		fixed8 x, y;
+		fixed8 scale_x, scale_y;
+		u8 pri;
 	};
 
 	static const int NUM_PLAYFIELDS = 4;
@@ -307,9 +307,10 @@ protected:
 	bool m_extend = false;
 	u8 m_sprite_extra_planes = 0;
 	u8 m_sprite_pen_mask = 0;
+	bool m_sprite_trails = false;
 	u16 *m_pf_data[8]{};
 	int m_sprite_lag = 0;
-	u8 m_sprite_pri_usage = 0;
+	//u8 m_sprite_pri_usage = 0;
 	bitmap_ind8 m_pri_alp_bitmap;
 	bitmap_ind16 m_sprite_framebuffers[NUM_SPRITEGROUPS]{};
 	u16 m_width_mask = 0;
