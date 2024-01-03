@@ -1096,7 +1096,7 @@ void taito_f3_state::draw_line(pen_t* dst, f3_line_inf &line, int xs, int xe, pl
 	const u8 *flags = &pf->flagsbitmap->pix(y_index);
 
 	
-	if (y==200) {
+	if (line.y==200) {
 		//logerror("line#200: sx: %f, rowscroll: %f, scale: %f×\n", pf->reg_sx/256.0, pf->rowscroll/256.0, pf->x_scale/256.0);
 	}
 	
@@ -1244,7 +1244,7 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 		int sprite_counts[4];
 		
 		if (print) {
-			logerror("-' %04x `------------------------- %d\n", line_data.blend, line);
+			logerror("-' [%d,%d,%d,%d] `------------------------- %d\n", line_data.blend[3], line_data.blend[2], line_data.blend[1], line_data.blend[0], line);
 			
 			sprite_counts[0] = sprite_counts[1] = sprite_counts[2] = sprite_counts[3] = 0;
 		
