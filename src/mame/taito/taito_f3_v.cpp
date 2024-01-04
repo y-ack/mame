@@ -803,11 +803,11 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 	// 4000 **********************************
 	for (int i : {2, 3}) {
 		if (offs_t where = latched_addr(0, i)) {
-			u16 colscroll = m_line_ram[where];
-			line.pf[i].colscroll   = colscroll & 0x1ff;
-			line.pf[i].alt_tilemap = colscroll & 0x200;
-			line.clip[2*(i-2) + 0].set_upper(BIT(colscroll, 12), BIT(colscroll, 13));
-			line.clip[2*(i-2) + 1].set_upper(BIT(colscroll, 14), BIT(colscroll, 15));
+			u16 word = m_line_ram[where];
+			line.pf[i].colscroll   = word & 0x1ff;
+			line.pf[i].alt_tilemap = word & 0x200;
+			line.clip[2*(i-2) + 0].set_upper(BIT(word, 12), BIT(word, 13));
+			line.clip[2*(i-2) + 1].set_upper(BIT(word, 14), BIT(word, 15));
 		}
 	}
 
@@ -815,49 +815,47 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 	// renderer needs to adjust by -48
 	for (int i : {0, 1, 2, 3}) {
 		if (offs_t where = latched_addr(1, i)) {
-			u16 clip_lows = m_line_ram[where];
-			line.clip[i].set_lower(BIT(clip_lows, 0, 8), BIT(clip_lows, 8, 8));
+			u16 word = m_line_ram[where];
+			line.clip[i].set_lower(BIT(word, 0, 8), BIT(word, 8, 8));
 		}
 	}
 
 	// 6000 **********************************
 	if (offs_t where = latched_addr(2, 0)) {
 		// first value is sync register, special handling unnecessary?
-		u16 line_6000 = m_line_ram[where];
+		u16 word = m_line_ram[where];
 
-		line.pivot.pivot_control = BIT(line_6000, 8, 8);
+		line.pivot.pivot_control = BIT(word, 8, 8);
 		if (line.pivot.pivot_control & 0b01010101) // check if unknown pivot control bits set
 			logerror("unknown pivot ctrl bits: %02x__ at %04x\n", line.pivot.pivot_control, 0x6000 + y*2);
 
 		for (int sp_group = 0; sp_group < NUM_SPRITEGROUPS; sp_group++) {
-			line.sp[sp_group].mix_value = (line.sp[sp_group].mix_value & 0x3fff)
-				| BIT(line_6000, sp_group * 2, 2) << 14;
+			line.sp[sp_group].mix_value &= 0x3fff;
+			line.sp[sp_group].mix_value |= BIT(word, sp_group * 2, 2) << 14;
 		}
 	}
 	if (offs_t where = latched_addr(2, 1)) {
-		u16 blend_vals = m_line_ram[where];
+		u16 word = m_line_ram[where];
 		for (int idx = 0; idx < 4; idx++) {
-			u8 a = BIT(blend_vals, 4 * idx, 4);
+			u8 a = BIT(word, 4 * idx, 4);
 			line.blend[idx] = 0xf - a;
 		}
 	}
 	if (offs_t where = latched_addr(2, 2)) {
-		u16 x_mosaic = m_line_ram[where];
+		u16 word = m_line_ram[where];
 
+		line.x_sample = 16 - BIT(word, 4, 4);
+		
 		for (int pf_num = 0; pf_num < NUM_PLAYFIELDS; pf_num++) {
-			if ((line.pf[pf_num].x_sample_enable = BIT(x_mosaic, pf_num))) {
-				line.pf[pf_num].x_sample = (x_mosaic & 0xf0) >> 4;
-			}
+			line.pf[pf_num].x_mosaic_enable = BIT(word, pf_num);
 		}
-
-		line.x_sample = (x_mosaic & 0xf0) >> 4;
-
+		
 		for (int sp_num = 0; sp_num < NUM_SPRITEGROUPS; sp_num++) {
-			line.sp[sp_num].x_sample_enable = BIT(x_mosaic, 9);
+			line.sp[sp_num].x_mosaic_enable = BIT(word, 9);
 		}
-		line.pivot.x_sample_enable = BIT(x_mosaic, 10);
+		line.pivot.x_mosaic_enable = BIT(word, 10);
 
-		line.fx_6400 = (x_mosaic & 0xfc00) >> 8;
+		line.fx_6400 = (word & 0xfc00) >> 8;
 		if (line.fx_6400 && line.fx_6400 != 0x70) // check if unknown effect bits set
 			logerror("unknown fx bits: %02x__ at %04x\n", line.fx_6400, 0x6400 + y*2);
 	}
@@ -1087,88 +1085,90 @@ void taito_f3_state::blend_dispatch(u8 blend_mode, bool sel, u8 prio, const u8 *
 	}
 }
 
-
-void taito_f3_state::draw_line(pen_t* dst, f3_line_inf &line, int xs, int xe, playfield_inf* pf)
+// playfields
+void taito_f3_state::draw_line(pen_t* dst, f3_line_inf &line, const clip_plane_inf &range, const playfield_inf &gfx)
 {
 	const pen_t *clut = &m_palette->pen(0);
-	const int y_index = ((pf->reg_fx_y >> 8) + pf->colscroll) & 0x1ff;
-	const u16 *src = &pf->srcbitmap->pix(y_index);
-	const u8 *flags = &pf->flagsbitmap->pix(y_index);
+	const int y_index = ((gfx.reg_fx_y >> 8) + gfx.colscroll) & 0x1ff;
+	const u16 *src = &gfx.bitmap.src->pix(y_index);
+	const u8 *flags = &gfx.bitmap.flags->pix(y_index);
 
-	
-	if (line.y==200) {
-		//logerror("line#200: sx: %f, rowscroll: %f, scale: %f×\n", pf->reg_sx/256.0, pf->rowscroll/256.0, pf->x_scale/256.0);
-	}
-	
-	fixed8 fx_x = pf->reg_sx + pf->rowscroll;
-	fx_x += 10*((pf->x_scale)-(1<<8));
-	fx_x &= (m_width_mask << 8) | 0xff;
+	fixed8 fx_x = gfx.reg_sx + gfx.rowscroll;
+	fx_x += 10*((gfx.x_scale)-(1<<8));
+	fx_x &= (m_width_mask << 8) | 0xff; // do we need this?
 
-	//logerror("pri/alp: %X %X\n", line.pri_alp[180].pri, line.pri_alp[180].alpha);
-	for (int x = xs; x < xe; x++) {
-		auto pri_alp = line.pri_alp[x];
-		if (pf->prio() > pri_alp.pri
-			|| (pri_alp.alpha && (pf->blend_mask() != pri_alp.active_alpha))) {
+	for (int x = range.l; x < range.r; x++) {
+		auto &pri_alp = line.pri_alp[x];
+		if (gfx.prio() > pri_alp.pri
+			|| (pri_alp.alpha && (gfx.blend_mask() != pri_alp.active_alpha))) {
 
-			int real_x = pf->x_sample_enable ? mosaic(x, 16 - pf->x_sample) : x;
-			int x_index = (((fx_x + (real_x - 46) * pf->x_scale)>>8) + 46) & m_width_mask;
+			int real_x = gfx.x_mosaic_enable ? mosaic(x, line.x_sample) : x;
+			int x_index = (((fx_x + (real_x - 46) * gfx.x_scale)>>8) + 46) & m_width_mask;
 
 			if (!(flags[x_index] & 0xf0))
 				continue;
 			if (const u16 col = src[x_index]) {
-				const bool sel = flags[x_index] & 0x1;
-				blend_dispatch(pf->blend_mask(), sel, pf->prio(),
-							   line.blend, line.pri_alp[x], dst[x], clut[col]);
+				const bool sel = BIT(flags[x_index], 0);
+				blend_dispatch(gfx.blend_mask(), sel, gfx.prio(),
+							   line.blend, pri_alp, dst[x], clut[col]);
 			}
 		}
 	}
 }
 
-void taito_f3_state::draw_line(pen_t* dst, f3_line_inf &line, int xs, int xe, sprite_inf* sp)
+// sprite groups
+void taito_f3_state::draw_line(pen_t* dst, f3_line_inf &line, const clip_plane_inf &range, const sprite_inf &gfx)
 {
 	const pen_t *clut = &m_palette->pen(0);
-	const u16 *src = &sp->srcbitmap->pix(line.y);
+	const int y_index = line.y;
+	const u16 *src = &gfx.bitmap.src->pix(y_index);
+	//const u8 *flags = &gfx.bitmap.flags->pix(y_index);
 
-	const u8 blend_mode = sp->blend_mask();
 	//logerror("pri/alp: %X %X\n", line.pri_alp[180].pri, line.pri_alp[180].alpha);	
-	for (int x = xs; x < xe; x++) {
-		auto pri_alp = line.pri_alp[x];
-		if (sp->prio() > line.pri_alp[x].pri
-			|| (pri_alp.alpha && (blend_mode != pri_alp.active_alpha))) {
+	for (int x = range.l; x < range.r; x++) {
+		auto &pri_alp = line.pri_alp[x];
+		if (gfx.prio() > pri_alp.pri
+			|| (pri_alp.alpha && (gfx.blend_mask() != pri_alp.active_alpha))) {
+			
+			int real_x = gfx.x_mosaic_enable ? mosaic(x, line.x_sample) : x;
+			int x_index = real_x;
 
-			if (const u16 col = src[x]) { // 0 = transparent
-				const bool sel = sp->brightness;
-				blend_dispatch(sp->blend_mask(), sel, sp->prio(),
-							   line.blend, line.pri_alp[x], dst[x], clut[col]);
+			//if (!(flags[x_index] & 0xf0))
+			//	continue;
+			if (const u16 col = src[x_index]) { // 0 = transparent
+				const bool sel = gfx.brightness;
+				blend_dispatch(gfx.blend_mask(), sel, gfx.prio(),
+						line.blend, pri_alp, dst[x], clut[col]);
 			}
 		}
 	}
 }
 
-
-
-void taito_f3_state::draw_line(pen_t* dst, f3_line_inf &line, int xs, int xe, pivot_inf* pv)
+// pivot
+void taito_f3_state::draw_line(pen_t* dst, f3_line_inf &line, const clip_plane_inf &range, const pivot_inf &gfx)
 {
 	const pen_t *clut = &m_palette->pen(0);
-	const u16 height_mask = pv->use_pix() ? 0xff : 0x1ff;
+	const u16 height_mask = gfx.use_pix() ? 0xff : 0x1ff;
 	const u16 width_mask = 0x1ff;
 
-	const int y_index = (pv->reg_sy + line.y) & height_mask;
-	const u16 *srcbitmap = pv->use_pix() ? &pv->srcbitmap_pixel->pix(y_index) : &pv->srcbitmap_vram->pix(y_index);
-	const u8 *flagsbitmap = pv->use_pix() ? &pv->flagsbitmap_pixel->pix(y_index) : &pv->flagsbitmap_vram->pix(y_index);
+	const int y_index = (gfx.reg_sy + line.y) & height_mask;
+	const u16 *src = &gfx.bitmap.src->pix(y_index);
+	const u8 *flags = &gfx.bitmap.flags->pix(y_index);
 
-	for (int x = xs; x < xe; x++) {
-		auto pri_alp = line.pri_alp[x];
-		if (pv->prio() > pri_alp.pri
-			|| (pri_alp.alpha && (pv->blend_mask() != pri_alp.active_alpha))) {
+	for (int x = range.l; x < range.r; x++) {
+		auto &pri_alp = line.pri_alp[x];
+		if (gfx.prio() > pri_alp.pri
+			|| (pri_alp.alpha && (gfx.blend_mask() != pri_alp.active_alpha))) {
 
-			int x_index = (pv->reg_sx + x) & width_mask;
-			if (!(flagsbitmap[x_index] & 0xf0))
+			int real_x = gfx.x_mosaic_enable ? mosaic(x, line.x_sample) : x;
+			int x_index = (gfx.reg_sx + real_x) & width_mask;
+
+			if (!(flags[x_index] & 0xf0))
 				continue;
-			if (u16 col = srcbitmap[x_index]) {
+			if (const u16 col = src[x_index]) {
 				const bool sel = false;
-				blend_dispatch(pv->blend_mask(), sel, pv->prio(),
-							   line.blend, line.pri_alp[x], dst[x], clut[col]);
+				blend_dispatch(gfx.blend_mask(), sel, gfx.prio(),
+						line.blend, pri_alp, dst[x], clut[col]);
 			}
 		}
 	}
@@ -1190,21 +1190,14 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 	// acquire sprite rendering layers, playfield tilemaps, playfield scroll
 	f3_line_inf line_data{};
 	for (int i=0; i<NUM_SPRITEGROUPS; i++) {
-		line_data.sp[i].srcbitmap = &m_sprite_framebuffers[i];
+		new (&line_data.sp[i].bitmap) draw_source(&m_sprite_framebuffers[i]);
 	}
-	for (int pf = 0; pf < NUM_PLAYFIELDS; ++pf) {
-		int tmap_number = pf + line_data.pf[pf].alt_tilemap * 2;
-		line_data.pf[pf].srcbitmap = &m_tilemap[tmap_number]->pixmap();
-		line_data.pf[pf].flagsbitmap = &m_tilemap[tmap_number]->flagsmap();
-
-		get_pf_scroll(pf, line_data.pf[pf].reg_sx, line_data.pf[pf].reg_sy);
-		line_data.pf[pf].reg_fx_y = line_data.pf[pf].reg_sy;
-		line_data.pf[pf].x_scale = (256-0);
+	for (int i = 0; i < NUM_PLAYFIELDS; ++i) {
+		auto &pf = line_data.pf[i];
+		get_pf_scroll(i, pf.reg_sx, pf.reg_sy);
+		pf.reg_fx_y = pf.reg_sy;
+		pf.x_scale = (256-0);
 	}
-	line_data.pivot.srcbitmap_pixel = &m_pixel_layer->pixmap();
-	line_data.pivot.flagsbitmap_pixel = &m_pixel_layer->flagsmap();
-	line_data.pivot.srcbitmap_vram = &m_vram_layer->pixmap();
-	line_data.pivot.flagsbitmap_vram = &m_vram_layer->flagsmap();
 	if (m_flipscreen) {
 		line_data.pivot.reg_sx = (m_control_1[4]) - 12;
 		line_data.pivot.reg_sy = (m_control_1[5] & 0x1ff);
@@ -1214,7 +1207,7 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 	}
 
 	auto prio = [](const auto& obj) -> u8 { return obj->prio(); };
-
+	
 	int ys = m_flipscreen ? 24 : 0;
 	for (int y = y_start; y != y_end; y += y_inc) {
 		read_line_ram(line_data, y);
@@ -1224,7 +1217,17 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 			pri.active_alpha = 0;
 			pri.alpha = 0;
 		}
-
+		
+		for (int i = 0; i < NUM_PLAYFIELDS; ++i) {
+			int tmap_number = i + line_data.pf[i].alt_tilemap * 2;
+			new(&line_data.pf[i].bitmap) draw_source(m_tilemap[tmap_number]);
+		}
+		if (line_data.pivot.use_pix()) {
+			new(&line_data.pivot.bitmap) draw_source(m_pixel_layer);
+		} else {
+			new(&line_data.pivot.bitmap) draw_source(m_vram_layer);
+		}
+		
 		// sort layers
 		std::array<std::variant<pivot_inf*, sprite_inf*, playfield_inf*>,
 				   NUM_SPRITEGROUPS + NUM_TILEMAPS> layers = {
@@ -1238,11 +1241,8 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 						 });
 		
 		int line=100;
-		
 		bool print = y==line;
-		
 		int sprite_counts[4];
-		
 		if (print) {
 			logerror("-' [%d,%d,%d,%d] `------------------------- %d\n", line_data.blend[3], line_data.blend[2], line_data.blend[1], line_data.blend[0], line);
 			
@@ -1262,7 +1262,7 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 					// 	arg->mix_value &= 0x3fff; // treat last layer as opaque mode ?
 					std::vector<clip_plane_inf> clip_ranges = calc_clip(line_data.clip, arg);
 					for (const auto &clip : clip_ranges) {
-						draw_line(&bitmap.pix(y+ys), line_data, clip.l, clip.r, arg);
+						draw_line(&bitmap.pix(y+ys), line_data, clip, *arg);
 					}
 				}
 				if (print) {
@@ -1285,7 +1285,7 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 		for (auto &pf : line_data.pf) {
 			bool bonus_d = false;
 			for (int xx = 46; xx < 320+46; xx++) {
-				bool temp_bonus = pf.flagsbitmap->pix(y+ys, xx) & 0x1;
+				bool temp_bonus = pf.bitmap.flags->pix(y+ys, xx) & 0x1;
 				if (temp_bonus != bonus_d) {
 					bitmap.pix(y+ys, xx) = temp_bonus ? 0x00FFFF : 0x00FF00;
 					bonus_d = temp_bonus;
@@ -1293,7 +1293,7 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 			}
 			bitmap.pix(y+ys, dbgx++) = pf.blend_b() ? 0x0000FF : 0x000000;
 			bitmap.pix(y+ys, dbgx++) = pf.blend_a() ? 0xFF0000 : 0x000000;
-			bitmap.pix(y+ys, dbgx++) = pf.flagsbitmap->pix(y+ys, 0) & 0x1 ? 0x00FFFF : 0x000000;
+			bitmap.pix(y+ys, dbgx++) = pf.bitmap.flags->pix(y+ys, 0) & 0x1 ? 0x00FFFF : 0x000000;
 			dbgx++;
 		}
 		for (auto &sp : line_data.sp) {
@@ -1449,6 +1449,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 			logerror("unknown sprite y upper bits: %4x\n", spr[3]);
 		}
 		if (spr[6] & 0b0111'1100'0000'0000) {
+			// landmakrj: 8BFF ?
 			logerror("unknown sprite jump bits: %4x\n", spr[6]);
 		}
 

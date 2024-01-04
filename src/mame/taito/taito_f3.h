@@ -204,6 +204,20 @@ protected:
 		}
 	};
 
+	struct draw_source {
+		draw_source() {};
+		draw_source(bitmap_ind16* bitmap) {
+			src = bitmap;
+			flags = nullptr;
+		}
+		draw_source(tilemap_t *tilemap) {
+			src = &tilemap->pixmap();
+			flags = &tilemap->flagsmap();
+		};
+		bitmap_ind16* src{nullptr};
+		bitmap_ind8*  flags{nullptr};
+	};
+	
 	struct mixable {// layer compositing information
 		u16 mix_value{0};
 		u8 prio() const { return mix_value & 0x000f; };
@@ -217,26 +231,24 @@ protected:
 
 		inline bool operator<(const mixable& rhs) const noexcept { return this->prio() < rhs.prio(); };
 		inline bool operator>(const mixable& rhs) const noexcept { return this->prio() > rhs.prio(); };
+		
+		bool x_mosaic_enable{false}; // 6400
+		
+		draw_source bitmap;
 	};
 
 	struct sprite_inf : mixable {
 		// alpha mode in 6000
+		// x mosaic enable in 6400
 		// line enable, clip settings in 7400
 		// priority in 7600
 
-		bool x_sample_enable{false}; // 6400
 		bool brightness{false}; // 7400 0xf000
-		bitmap_ind16* srcbitmap;
 	};
 
 	struct pivot_inf : mixable {
-		bitmap_ind16* srcbitmap_pixel;
-		bitmap_ind8*  flagsbitmap_pixel;
-		bitmap_ind16* srcbitmap_vram;
-		bitmap_ind8*  flagsbitmap_vram;
-
 		u8 pivot_control{0};     // 6000
-		bool x_sample_enable{0}; // 6400
+		// x mosaic enable in 6400
 		u16 pivot_enable{0};     // 7000
 		// mix info from 7200
 		bool use_pix() const { return pivot_control & 0xa0; };
@@ -246,13 +258,9 @@ protected:
 	};
 
 	struct playfield_inf : mixable {
-		bitmap_ind16* srcbitmap;
-		bitmap_ind8*  flagsbitmap;
-
 		u16 colscroll{0};            // 4000
 		bool alt_tilemap{false};     // 4000
-		bool x_sample_enable{false}; // 6400 x_sample_mask
-		int x_sample{0};
+		// x mosaic enable in 6400
 		fixed8 x_scale{0x80};        // 8000
 		fixed8 y_scale{0};           // 8000
 		u16 pal_add{0};              // 9000
@@ -275,7 +283,7 @@ protected:
 		// 6200 - define this type better
 		u8 blend[4]{0}; // less 0 - 8 more
 		// 6400
-		u8 x_sample{0}; // mosaic effect
+		u8 x_sample{16 - 0}; // mosaic effect
 		u8 fx_6400{0}; // unemulated other effects
 		// 6600
 		u16 bg_palette{0}; // unemulated, needs investigation, bad name?
@@ -292,9 +300,9 @@ protected:
 	void blend_d(u8 blend_mode, bool sel, u8 prio, const u8 *blendvals, pri_alpha &pri_alp, u32 &dst, u32 src);
 	void blend_dispatch(u8 blend_mode, bool sel, u8 prio, const u8 *blendvals, pri_alpha &pri_alp, u32 &dst, u32 src);
 	
-	virtual void draw_line(pen_t* dst, f3_line_inf &line, int xs, int xe, sprite_inf* sp);
-	virtual void draw_line(pen_t* dst, f3_line_inf &line, int xs, int xe, playfield_inf* pf);
-	virtual void draw_line(pen_t* dst, f3_line_inf &line, int xs, int xe, pivot_inf* pv);
+	virtual void draw_line(pen_t* dst, f3_line_inf &line, const clip_plane_inf &range, const sprite_inf &gfx);
+	virtual void draw_line(pen_t* dst, f3_line_inf &line, const clip_plane_inf &range, const playfield_inf &gfx);
+	virtual void draw_line(pen_t* dst, f3_line_inf &line, const clip_plane_inf &range, const pivot_inf &gfx);
 
 	int m_game = 0;
 	tilemap_t *m_tilemap[8] = {nullptr};
