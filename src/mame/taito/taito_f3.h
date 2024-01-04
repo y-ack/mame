@@ -171,7 +171,7 @@ protected:
 	std::unique_ptr<u8[]> m_decoded_gfx5;
 
 	struct tempsprite {
-		u16 code;
+		int code; // 17 bits
 		u8 color;
 		bool flip_x, flip_y;
 		fixed8 x, y;
