@@ -876,9 +876,9 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 	if (offs_t where = latched_addr(3, 2)) {
 		u16 sprite_mix = m_line_ram[where];
 		
-		u16 unknown = BIT(sprite_mix, 10, 2);
-		if (unknown)
-			logerror("unknown sprite mix bits: _%01x__ at %04x\n", unknown << 2, 0x7400 + y*2);
+		//u16 unknown = BIT(sprite_mix, 10, 2);
+		//if (unknown)
+		//	logerror("unknown sprite mix bits: _%01x__ at %04x\n", unknown << 2, 0x7400 + y*2);
 		
 		for (int group = 0; group < NUM_SPRITEGROUPS; group++) {
 			line.sp[group].mix_value = (line.sp[group].mix_value & 0xc00f)
@@ -1360,6 +1360,8 @@ inline void taito_f3_state::f3_drawgfx(const tempsprite &sprite, const rectangle
 
 void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 {
+	int block_size = 0;
+	
 	struct sprite_axis
 	{
 		fixed8 block_scale = 1 << 8;
@@ -1403,7 +1405,7 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 
 	tempsprite *sprite_ptr = &m_spritelist[0];
 	int total_sprites = 0;
-
+	
 	for (int offs = 0; offs < 0x400 && (total_sprites < 0x400); offs++)
 	{
 		total_sprites++; // prevent infinite loops
@@ -1474,6 +1476,14 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		const u16 zooms = spr[1];
 		x.update(scroll_mode, spr[2] & 0xFFF, lock, BIT(spritecont, 4+2, 2), zooms & 0xFF);
 		y.update(scroll_mode, spr[3] & 0xFFF, lock, BIT(spritecont, 4+0, 2), zooms >> 8);
+		int block_commands = spritecont>>4;
+		if (block_commands) {
+			block_size++;
+		} else {
+			if (block_size)
+				logerror("block: %d\n", block_size);
+			block_size = 0;
+		}
 
 		int tile = spr[0] | (BIT(spr[5], 0) << 16);
 		if (!tile) continue; // todo: is this the correct way to tell if a sprite exists?
