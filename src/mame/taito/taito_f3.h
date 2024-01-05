@@ -218,6 +218,8 @@ protected:
 		bitmap_ind8*  flags{nullptr};
 	};
 	
+	struct f3_line_inf;
+	
 	struct mixable {// layer compositing information
 		u16 mix_value{0};
 		u8 prio() const { return mix_value & 0x000f; };
@@ -235,6 +237,9 @@ protected:
 		bool x_mosaic_enable{false}; // 6400
 		
 		draw_source bitmap;
+		
+		int y_index(f3_line_inf &line);
+		int x_index(int x);
 	};
 
 	struct sprite_inf : mixable {
@@ -255,6 +260,9 @@ protected:
 
 		u16 reg_sx{0};
 		u16 reg_sy{0};
+		
+		int y_index(f3_line_inf &line);
+		int x_index(int x);
 	};
 
 	struct playfield_inf : mixable {
@@ -269,6 +277,12 @@ protected:
 		fixed8 reg_sx{0};
 		fixed8 reg_sy{0};
 		fixed8 reg_fx_y{0};
+		//fixed8 reg_fx_x{0};
+		
+		u16 width_mask;
+		
+		int y_index(f3_line_inf &line);
+		int x_index(int x);
 	};
 	
 	struct pri_alpha { u8 pri; u8 active_alpha; u8 alpha; };
@@ -300,9 +314,9 @@ protected:
 	void blend_d(u8 blend_mode, bool sel, u8 prio, const u8 *blendvals, pri_alpha &pri_alp, u32 &dst, u32 src);
 	void blend_dispatch(u8 blend_mode, bool sel, u8 prio, const u8 *blendvals, pri_alpha &pri_alp, u32 &dst, u32 src);
 	
-	virtual void draw_line(pen_t* dst, f3_line_inf &line, const clip_plane_inf &range, const sprite_inf &gfx);
-	virtual void draw_line(pen_t* dst, f3_line_inf &line, const clip_plane_inf &range, const playfield_inf &gfx);
-	virtual void draw_line(pen_t* dst, f3_line_inf &line, const clip_plane_inf &range, const pivot_inf &gfx);
+	//virtual void draw_line(pen_t* dst, f3_line_inf &line, const clip_plane_inf &range, const sprite_inf &gfx);
+	//virtual void draw_line(pen_t* dst, f3_line_inf &line, const clip_plane_inf &range, const playfield_inf &gfx);
+	//virtual void draw_line(pen_t* dst, f3_line_inf &line, const clip_plane_inf &range, const pivot_inf &gfx);
 
 	int m_game = 0;
 	tilemap_t *m_tilemap[8] = {nullptr};
