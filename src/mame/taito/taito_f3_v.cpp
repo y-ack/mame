@@ -1251,10 +1251,10 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 		}
 		//logerror("-----------\n");
 
-		/*
-		int dbgx = 46;
+		int dbgx = 0;
 		for (auto &pf : line_data.pf) {
 			bool bonus_d = false;
+			/*
 			for (int xx = 46; xx < 320+46; xx++) {
 				bool temp_bonus = pf.flagsbitmap->pix(y, xx) & 0x1;
 				if (temp_bonus != bonus_d) {
@@ -1262,6 +1262,7 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 					bonus_d = temp_bonus;
 				}
 			}
+			*/
 			bitmap.pix(y, dbgx++) = pf.blend_b() ? 0x0000FF : 0x000000;
 			bitmap.pix(y, dbgx++) = pf.blend_a() ? 0xFF0000 : 0x000000;
 			bitmap.pix(y, dbgx++) = pf.flagsbitmap->pix(y+ys, 0) & 0x1 ? 0x00FFFF : 0x000000;
@@ -1275,7 +1276,8 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 		}
 		bitmap.pix(y, dbgx++) = line_data.pivot.blend_b() ? 0x0000FF : 0x000000;
 		bitmap.pix(y, dbgx++) = line_data.pivot.blend_a() ? 0xFF0000 : 0x000000;
-		*/
+
+		bitmap.pix(y+ys, 46-1) = 0xFFFFFF;
 
 		if (y != y_start) {
 			// update registers

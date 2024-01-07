@@ -465,7 +465,7 @@ void taito_f3_state::f3(machine_config &config)
 	// and measurements from https://www.arcade-projects.com/threads/the-taito-f3-sync.12343/?
 	m_screen->set_raw(
 		XTAL(26'686'000)/4,
-		432, 46, 320+46,
+		432, 0, 320+46,
 		262, 24, 256
 	);
 	// refresh rate = 26686000/4/432/262 = 58.94..
@@ -497,19 +497,19 @@ void taito_f3_state::f3(machine_config &config)
 void taito_f3_state::f3_224a(machine_config &config)
 {
 	f3(config);
-	m_screen->set_visarea(46, 40*8-1 + 46, 31, 31+224-1);
+	m_screen->set_visarea(0, 40*8-1 + 46, 31, 31+224-1);
 }
 
 void taito_f3_state::f3_224b(machine_config &config)
 {
 	f3(config);
-	m_screen->set_visarea(46, 40*8-1 + 46, 32, 32+224-1);
+	m_screen->set_visarea(0, 40*8-1 + 46, 32, 32+224-1);
 }
 
 void taito_f3_state::f3_224c(machine_config &config)
 {
 	f3(config);
-	m_screen->set_visarea(46, 40*8-1 + 46, 24, 24+224-1);
+	m_screen->set_visarea(0, 40*8-1 + 46, 24, 24+224-1);
 }
 
 static const gfx_layout bubsympb_sprite_layout =
