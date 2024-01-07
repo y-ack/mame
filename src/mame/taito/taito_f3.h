@@ -269,7 +269,7 @@ protected:
 		u16 colscroll{0};            // 4000
 		bool alt_tilemap{false};     // 4000
 		// x mosaic enable in 6400
-		fixed8 x_scale{0x80};        // 8000
+		fixed8 x_scale{256 - 0};        // 8000
 		fixed8 y_scale{0};           // 8000
 		u16 pal_add{0};              // 9000
 		fixed8 rowscroll{0};         // a000

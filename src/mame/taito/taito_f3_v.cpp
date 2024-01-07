@@ -900,7 +900,7 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 			u16 pf_scale = m_line_ram[where];
 			// y zooms are interleaved
 			const int FIX_Y[] = { 0, 3, 2, 1 };
-			line.pf[i].x_scale = 256-BIT(pf_scale, 8, 8);
+			line.pf[i].x_scale = 256 - BIT(pf_scale, 8, 8);
 			line.pf[FIX_Y[i]].y_scale = BIT(pf_scale, 0, 8)<<1;
 		}
 	}
@@ -1129,7 +1129,6 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 		auto &pf = line_data.pf[i];
 		get_pf_scroll(i, pf.reg_sx, pf.reg_sy);
 		pf.reg_fx_y = pf.reg_sy;
-		pf.x_scale = (256-0);
 		pf.width_mask = m_width_mask;
 	}
 	if (m_flipscreen) {
