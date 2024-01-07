@@ -236,6 +236,7 @@ protected:
 		bitmap_ind8*  flagsbitmap_vram;
 
 		u8 pivot_control{0};     // 6000
+		bool blend_select{false};
 		bool x_sample_enable{false}; // 6400
 		u16 pivot_enable{0};     // 7000
 		// mix info from 7200
