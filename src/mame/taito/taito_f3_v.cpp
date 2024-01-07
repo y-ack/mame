@@ -1253,8 +1253,8 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 
 		int dbgx = 0;
 		for (auto &pf : line_data.pf) {
-			bool bonus_d = false;
 			/*
+			bool bonus_d = false;
 			for (int xx = 46; xx < 320+46; xx++) {
 				bool temp_bonus = pf.flagsbitmap->pix(y, xx) & 0x1;
 				if (temp_bonus != bonus_d) {
