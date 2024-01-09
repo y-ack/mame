@@ -851,9 +851,9 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 		}
 		
 		for (int sp_num = 0; sp_num < NUM_SPRITEGROUPS; sp_num++) {
-			line.sp[sp_num].x_mosaic_enable = BIT(word, 9);
+			line.sp[sp_num].x_mosaic_enable = BIT(word, 8);
 		}
-		line.pivot.x_mosaic_enable = BIT(word, 10);
+		line.pivot.x_mosaic_enable = BIT(word, 9);
 
 		line.fx_6400 = (word & 0xfc00) >> 8;
 		if (line.fx_6400 && line.fx_6400 != 0x70) // check if unknown effect bits set
@@ -876,9 +876,9 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 	if (offs_t where = latched_addr(3, 2)) {
 		u16 sprite_mix = m_line_ram[where];
 		
-		//u16 unknown = BIT(sprite_mix, 10, 2);
-		//if (unknown)
-		//	logerror("unknown sprite mix bits: _%01x__ at %04x\n", unknown << 2, 0x7400 + y*2);
+		u16 unknown = BIT(sprite_mix, 10, 2);
+		if (unknown)
+			logerror("unknown sprite mix bits: _%01x__ at %04x\n", unknown << 2, 0x7400 + y*2);
 		
 		for (int group = 0; group < NUM_SPRITEGROUPS; group++) {
 			line.sp[group].mix_value = (line.sp[group].mix_value & 0xc00f)
@@ -939,9 +939,11 @@ void taito_f3_state::get_pf_scroll(int pf_num, fixed8 &reg_sx, fixed8 &reg_sy)
 
 	// x scroll is stored as fixed10.6, with fractional bits inverted.
 	// we convert this to regular fixed24.8
-	fixed8 sx = (m_control_0[pf_num] ^ 0b111111) << (8-6);
-	fixed8 sy = (m_control_0[pf_num + 4]) << (8-7); // fixed11.7 to fixed24.8
-
+	s16 raw_sx = m_control_0[pf_num];
+	s16 raw_sy = m_control_0[pf_num + 4];
+	fixed8 sx = (raw_sx ^ 0b111111) << (8-6);
+	fixed8 sy = (raw_sy) << (8-7); // fixed11.7 to fixed24.8
+	
 	sx -= (6 + 4 * pf_num) << 8;
 	sy += 1 << 8;
 	//sy -= 1; // or 2?   this was correct for the scaled playfield in ridingf, but causes a 1px offset in some playfields elsewhere
@@ -954,7 +956,9 @@ void taito_f3_state::get_pf_scroll(int pf_num, fixed8 &reg_sx, fixed8 &reg_sy)
 		if (m_game_config->extend)
 			sx -= 512 << 8;
 	}
-
+	
+	logerror("pf[%d]: %f,%f\n", pf_num, sx/256.0, sy/256.0);
+ 
 	reg_sx = sx;
 	reg_sy = sy;
 }
@@ -1091,11 +1095,15 @@ int taito_f3_state::mixable::x_index(int x) {
 int taito_f3_state::mixable::y_index(f3_line_inf &line) {
 	return line.y;
 }
-int taito_f3_state::playfield_inf::x_index(int x) {
-	fixed8 fx_x = reg_sx + rowscroll;
-	fx_x += 10*((x_scale)-(1<<8));
-	fx_x &= (width_mask << 8) | 0xff; // do we need this?
-	return (((fx_x + (x - 46) * x_scale)>>8) + 46) & width_mask;
+int taito_f3_state::playfield_inf::x_index(int dest_x) {
+	//fx_x += 10*((x_scale)-(1<<8));
+	fixed8 n = 46-10; //0;//46;// - 10;
+	//fx_x &= (width_mask << 8) | 0xff; // do we need this?
+	fixed8 unscaled = rowscroll + n;
+	fixed8 scaled = reg_sx + (dest_x<<8) - n;
+	fixed8 src_x = ((scaled * x_scale) >> 8) + unscaled;
+	
+	return (src_x >> 8) & width_mask;
 }
 int taito_f3_state::playfield_inf::y_index(f3_line_inf &line) {
 	return ((reg_fx_y >> 8) + colscroll) & 0x1ff;
@@ -1128,6 +1136,10 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 	for (int i = 0; i < NUM_PLAYFIELDS; ++i) {
 		auto &pf = line_data.pf[i];
 		get_pf_scroll(i, pf.reg_sx, pf.reg_sy);
+		if (i==1 || 1) {
+			logerror("--- pf[%d] scroll: %f,%f\n", i, pf.reg_sx/256.0, pf.reg_sy/256.0);
+		}
+		
 		pf.reg_fx_y = pf.reg_sy;
 		pf.width_mask = m_width_mask;
 	}
@@ -1154,9 +1166,17 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 		}
 		
 		for (int i = 0; i < NUM_PLAYFIELDS; ++i) {
-			int tmap_number = i + line_data.pf[i].alt_tilemap * 2;
+			int tmap_number = i;
+			if (!m_extend && line_data.pf[i].alt_tilemap)
+				tmap_number += 2;
+			//int tmap_number = m_extend ? i : (i + line_data.pf[i].alt_tilemap * 2);
+			if (!m_tilemap[tmap_number]) {
+				logerror("pf[%d]: missing tilemap[%d]?", i, tmap_number);
+				goto aaaaaaaaaa;
+			}
 			new(&line_data.pf[i].bitmap) draw_source(m_tilemap[tmap_number]);
 		}
+		{
 		if (line_data.pivot.use_pix()) {
 			new(&line_data.pivot.bitmap) draw_source(m_pixel_layer);
 		} else {
@@ -1195,8 +1215,16 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 			// bool last = gfx == layers.back();
 			std::visit([&](auto&& arg) {
 				auto& gfx = *arg;
+				using T = std::decay_t<decltype(arg)>;
+				
+				if constexpr (std::is_same_v<T, playfield_inf*>) {
+					int n = arg - &line_data.pf[0];
+					if (n==0) {
+						//logerror("pf0: pos=%f, scale=%f\n", (gfx.reg_sx+gfx.rowscroll)/256.0, gfx.x_scale/256.0);
+					}
+				}
+				
 				if (print) {
-					using T = std::decay_t<decltype(arg)>;
 					if constexpr (std::is_same_v<T, sprite_inf*>) {
 						int n = arg - &line_data.sp[0];
 						logerror("SP[%d]: %d,%d %d (count: %d)\n", n, gfx.blend_b(), gfx.blend_a(), gfx.brightness, sprite_counts[n]);
@@ -1229,7 +1257,6 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 								continue;
 							if (const u16 col = src[x_index]) {
 								bool sel;
-								using T = std::decay_t<decltype(arg)>;
 								if constexpr (std::is_same_v<T, sprite_inf*>) {
 									sel = gfx.brightness;
 								} else if constexpr (std::is_same_v<T, playfield_inf*>) {
@@ -1246,7 +1273,7 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 		}
 		//logerror("-----------\n");
 
-		int dbgx = 46;
+		int dbgx = 0;
 		for (auto &pf : line_data.pf) {
 			bool bonus_d = false;
 			for (int xx = 46; xx < 320+46; xx++) {
@@ -1269,7 +1296,11 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 		}
 		bitmap.pix(y+ys, dbgx++) = line_data.pivot.blend_b() ? 0x0000FF : 0x000000;
 		bitmap.pix(y+ys, dbgx++) = line_data.pivot.blend_a() ? 0xFF0000 : 0x000000;
-
+		
+		bitmap.pix(y+ys, 46-1) = 0xFFFFFF;
+	}
+	
+	aaaaaaaaaa:
 
 		if (y != y_start) {
 			// update registers
@@ -1325,7 +1356,7 @@ inline void taito_f3_state::f3_drawgfx(const tempsprite &sprite, const rectangle
 
 void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 {
-	int block_size = 0;
+	//int block_size = 0;
 	
 	struct sprite_axis
 	{
@@ -1441,14 +1472,14 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 		const u16 zooms = spr[1];
 		x.update(scroll_mode, spr[2] & 0xFFF, lock, BIT(spritecont, 4+2, 2), zooms & 0xFF);
 		y.update(scroll_mode, spr[3] & 0xFFF, lock, BIT(spritecont, 4+0, 2), zooms >> 8);
-		int block_commands = spritecont>>4;
-		if (block_commands) {
-			block_size++;
-		} else {
-			if (block_size)
-				logerror("block: %d\n", block_size);
-			block_size = 0;
-		}
+		// int block_commands = spritecont>>4;
+		// if (block_commands) {
+		// 	block_size++;
+		// } else {
+		// 	if (block_size)
+		// 		logerror("block: %d\n", block_size);
+		// 	block_size = 0;
+		// }
 
 		int tile = spr[0] | (BIT(spr[5], 0) << 16);
 		if (!tile) continue; // todo: is this the correct way to tell if a sprite exists?

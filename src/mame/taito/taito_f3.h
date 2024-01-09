@@ -211,6 +211,9 @@ protected:
 			flags = nullptr;
 		}
 		draw_source(tilemap_t *tilemap) {
+			if (!tilemap) {
+				return;
+			}
 			src = &tilemap->pixmap();
 			flags = &tilemap->flagsmap();
 		};
