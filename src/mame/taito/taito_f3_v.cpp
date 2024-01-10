@@ -275,8 +275,15 @@ Playfield tile info:
 #include <variant>
 
 #define VERBOSE 0
-#define DARIUSG_KLUDGE
 #define TAITOF3_VIDEO_DEBUG 0
+
+static u64 bin_oct(u16 x) {
+	u64 y = 0;
+	for (int i=0; i<16; i++) {
+		y |= BIT(x, i) << (i*3);
+	}
+	return y;
+}
 
 // Game specific data - some of this can be removed when the software values are figured out
 struct taito_f3_state::F3config
@@ -325,70 +332,11 @@ const taito_f3_state::F3config taito_f3_state::f3_config_table[] =
 	{0}
 };
 
-
-/*
-alpha_mode
----- --xx    0:disable 1:nomal 2:alpha 7000 3:alpha b000
----1 ----    alpha level a
---1- ----    alpha level b
-1--------    opaque line
-*/
-
-
-/*
-pri_alp_bitmap
----- ---1    sprite priority 0
----- --1-    sprite priority 1
----- -1--    sprite priority 2
----- 1---    sprite priority 3
----1 ----    alpha level a 7000
---1- ----    alpha level b 7000
--1-- ----    alpha level a b000
-1--- ----    alpha level b b000
-1111 1111    opaque pixel
-*/
-
-
 void taito_f3_state::device_post_load()
 {
 	/* force a reread of the dynamic tiles in the pixel layer */
 	m_gfxdecode->gfx(0)->mark_all_dirty();
 	m_gfxdecode->gfx(1)->mark_all_dirty();
-}
-
-/******************************************************************************/
-
-void taito_f3_state::print_debug_info(bitmap_rgb32 &bitmap)
-{
-#if (TAITOF3_VIDEO_DEBUG)
-	const u16 *line_ram = m_line_ram;
-	const u16* m_spriteram16_buffered = m_spriteram.target();
-	
-	popmessage("%04X %04X %04X %04X %04X %04X %04X %04X\n"
-			   "%04X %04X %04X %04X %04X %04X %04X %04X\n"
-			   "%04X %04X %04X %04X %04X %04X %04X %04X\n"
-			   "Ctr1: %04x %04x %04x %04x\n"
-			   "Ctr2: %04x %04x %04x %04x\n"
-			   "Colm: %04x %04x %04x %04x\n"
-			   "Clip: %04x %04x %04x %04x\n"
-			   "Sprt: %04x %04x %04x %04x\n"
-			   "Pivt: %04x %04x %04x %04x\n"
-			   "Zoom: %04x %04x %04x %04x\n"
-			   "Line: %04x %04x %04x %04x\n"
-			   "Pri : %04x %04x %04x %04x\n",
-			   m_spriteram16_buffered[0], m_spriteram16_buffered[1], m_spriteram16_buffered[2], m_spriteram16_buffered[3], m_spriteram16_buffered[4], m_spriteram16_buffered[5], m_spriteram16_buffered[6], m_spriteram16_buffered[7],
-			   m_spriteram16_buffered[8], m_spriteram16_buffered[9], m_spriteram16_buffered[10], m_spriteram16_buffered[11], m_spriteram16_buffered[12], m_spriteram16_buffered[13], m_spriteram16_buffered[14], m_spriteram16_buffered[15],
-			   m_spriteram16_buffered[16], m_spriteram16_buffered[17], m_spriteram16_buffered[18], m_spriteram16_buffered[19], m_spriteram16_buffered[20], m_spriteram16_buffered[21], m_spriteram16_buffered[22], m_spriteram16_buffered[23],
-			   line_ram[0x0100/2] & 0xffff, line_ram[0x0300/2] & 0xffff, line_ram[0x0500/2] & 0xffff, line_ram[0x0700/2] & 0xffff,
-			   line_ram[0x0900/2] & 0xffff, line_ram[0x0b00/2] & 0xffff, line_ram[0x0d00/2] & 0xffff, line_ram[0x0f00/2] & 0xffff,
-			   line_ram[0x4180/2] & 0xffff, line_ram[0x4380/2] & 0xffff, line_ram[0x4580/2] & 0xffff, line_ram[0x4780/2] & 0xffff,
-			   line_ram[0x5180/2] & 0xffff, line_ram[0x5380/2] & 0xffff, line_ram[0x5580/2] & 0xffff, line_ram[0x5780/2] & 0xffff,
-			   line_ram[0x6180/2] & 0xffff, line_ram[0x6380/2] & 0xffff, line_ram[0x6580/2] & 0xffff, line_ram[0x6780/2] & 0xffff,
-			   line_ram[0x7180/2] & 0xffff, line_ram[0x7380/2] & 0xffff, line_ram[0x7580/2] & 0xffff, line_ram[0x7780/2] & 0xffff,
-			   line_ram[0x8180/2] & 0xffff, line_ram[0x8380/2] & 0xffff, line_ram[0x8580/2] & 0xffff, line_ram[0x8780/2] & 0xffff,
-			   line_ram[0xa180/2] & 0xffff, line_ram[0xa380/2] & 0xffff, line_ram[0xa580/2] & 0xffff, line_ram[0xa780/2] & 0xffff,
-			   line_ram[0xb180/2] & 0xffff, line_ram[0xb380/2] & 0xffff, line_ram[0xb580/2] & 0xffff, line_ram[0xb780/2] & 0xffff)
-#endif
 }
 
 /******************************************************************************/
@@ -473,7 +421,7 @@ TILE_GET_INFO_MEMBER(taito_f3_state::get_tile_info_pixel)
 void taito_f3_state::screen_vblank(int state)
 {
 	if (state) {
-		//get_sprite_info(m_spriteram.target());
+		get_sprite_info(m_spriteram.target());
 	}
 }
 
@@ -499,44 +447,19 @@ void taito_f3_state::set_extend(bool state) {
 		m_tilemap[6] = &machine().tilemap().create(*m_gfxdecode, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<6>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
 		m_tilemap[7] = &machine().tilemap().create(*m_gfxdecode, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<7>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
 	}
-	if (m_extend) {
-		m_pf_data[0] = m_pf_ram + (0x0000 / 2);
-		m_pf_data[1] = m_pf_ram + (0x2000 / 2);
-		m_pf_data[2] = m_pf_ram + (0x4000 / 2);
-		m_pf_data[3] = m_pf_ram + (0x6000 / 2);
-	} else {
-		m_pf_data[0] = m_pf_ram + (0x0000 / 2);
-		m_pf_data[1] = m_pf_ram + (0x1000 / 2);
-		m_pf_data[2] = m_pf_ram + (0x2000 / 2);
-		m_pf_data[3] = m_pf_ram + (0x3000 / 2);
-		m_pf_data[4] = m_pf_ram + (0x4000 / 2);
-		m_pf_data[5] = m_pf_ram + (0x5000 / 2);
-		m_pf_data[6] = m_pf_ram + (0x6000 / 2);
-		m_pf_data[7] = m_pf_ram + (0x7000 / 2);
+	for (int i=0; i<8; i++) {
+		if (m_tilemap[i])
+			m_tilemap[i]->set_transparent_pen(0);
 	}
+	
 	if (m_extend) {
-		m_width_mask = 0x3ff;
-		m_twidth_mask = 0x7f;
-		m_twidth_mask_bit = 7;
+		m_width_mask = 0x3ff; // 11 bits
+		for (int i=0; i<4; i++)
+			m_pf_data[i] = &m_pf_ram[(0x2000 * i) / 2];
 	} else {
-		m_width_mask = 0x1ff;
-		m_twidth_mask = 0x3f;
-		m_twidth_mask_bit = 6;
-	}
-	if (m_extend) {
-		m_tilemap[0]->set_transparent_pen(0);
-		m_tilemap[1]->set_transparent_pen(0);
-		m_tilemap[2]->set_transparent_pen(0);
-		m_tilemap[3]->set_transparent_pen(0);
-	} else {
-		m_tilemap[0]->set_transparent_pen(0);
-		m_tilemap[1]->set_transparent_pen(0);
-		m_tilemap[2]->set_transparent_pen(0);
-		m_tilemap[3]->set_transparent_pen(0);
-		m_tilemap[4]->set_transparent_pen(0);
-		m_tilemap[5]->set_transparent_pen(0);
-		m_tilemap[6]->set_transparent_pen(0);
-		m_tilemap[7]->set_transparent_pen(0);
+		m_width_mask = 0x1ff; // 9 bits
+		for (int i=0; i<8; i++)
+			m_pf_data[i] = &m_pf_ram[(0x1000 * i) / 2];
 	}
 }
 
@@ -658,22 +581,23 @@ void taito_f3_state::pf_ram_w(offs_t offset, u16 data, u16 mem_mask)
 {
 	COMBINE_DATA(&m_pf_ram[offset]);
 
-	if (m_game_config->extend)
-	{
-		if (offset < 0x4000)
-			m_tilemap[offset >> 12]->mark_tile_dirty((offset & 0xfff) >> 1);
-	}
-	else
-	{
-		if (offset < 0x4000)
-			m_tilemap[offset >> 11]->mark_tile_dirty((offset & 0x7ff) >> 1);
-	}
+	// address bits:
+	// [ttt xxxx xxxx xxxa] non-extend
+	// [ttx xxxx xxxx xxxa] extend
+	
+	const u8 x_bits = m_extend ? 12 : 11;
+	
+	u8 tmap_num = offset >> x_bits;
+	if (tmap_num > 8 || !m_tilemap[tmap_num])
+		return;
+	
+	int which_tile = BIT(offset, 0, x_bits) >> 1;
+	
+	m_tilemap[tmap_num]->mark_tile_dirty(which_tile);
 }
 
 void taito_f3_state::control_0_w(offs_t offset, u16 data, u16 mem_mask)
 {
-	//logerror("@@ scroll command: %04x at: %04x vpos: %d\n", data, offset*2, m_screen->vpos());
-
 	COMBINE_DATA(&m_control_0[offset]);
 }
 
@@ -753,35 +677,35 @@ u16 taito_f3_state::lineram_r(offs_t offset)
 
 void taito_f3_state::lineram_w(offs_t offset, u16 data, u16 mem_mask)
 {
+	{
+		if (offset == 0x6000/2) {
+			logerror("top sync register set to %04x at line %d\n", data, m_screen->vpos());;
+		}
+		if (offset == 0x6000/2+255) {
+			logerror("bottom sync register set to %04x at line %d\n", data, m_screen->vpos());;
+		}
+	}
+	
 	COMBINE_DATA(&m_line_ram[offset]);
 }
 
 void taito_f3_state::palette_24bit_w(offs_t offset, u32 data, u32 mem_mask)
 {
-	u8 r, g, b;
-
 	COMBINE_DATA(&m_paletteram32[offset]);
-
-	// .... .... .... .... rrrr gggg bbbb ....
-	// .... .... rrrr rrrr gggg gggg bbbb bbbb
+	
+	u32 color = m_paletteram32[offset];
+	rgb_t rgb;
 	
 	/* 12 bit palette games - there has to be a palette select bit somewhere */
-	if (m_game == SPCINVDX || m_game == RIDINGF || m_game == ARABIANM || m_game == RINGRAGE)
-	{
-		b = 15 * ((m_paletteram32[offset] >> 4) & 0xf);
-		g = 15 * ((m_paletteram32[offset] >> 8) & 0xf);
-		r = 15 * ((m_paletteram32[offset] >> 12) & 0xf);
+	if (m_game == SPCINVDX || m_game == RIDINGF || m_game == ARABIANM || m_game == RINGRAGE) {
+		// .... .... .... .... RRRR GGGG BBBB ....
+		// .... .... RRRR rrrr GGGG gggg BBBB bbbb
+		rgb = rgb_t(BIT(color, 12, 4) * 16, BIT(color, 8, 4) * 16, BIT(color, 4, 4) * 16);
+	} else {
+		rgb = rgb_t(color).set_a(255);
 	}
-
-	/* All other games - standard 24 bit palette */
-	else
-	{
-		r = (m_paletteram32[offset] >> 16) & 0xff;
-		g = (m_paletteram32[offset] >> 8) & 0xff;
-		b = (m_paletteram32[offset] >> 0) & 0xff;
-	}
-
-	m_palette->set_pen_color(offset, rgb_t(r, g, b));
+	
+	m_palette->set_pen_color(offset, rgb);
 }
 
 /******************************************************************************/
@@ -857,9 +781,9 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 		}
 		line.pivot.x_sample_enable = BIT(x_mosaic, 9);
 
-		line.fx_6400 = (x_mosaic & 0xfc00) >> 8;
+		line.fx_6400 = BIT(x_mosaic, 10, 6) << 2;
 		if (line.fx_6400 && line.fx_6400 != 0x70) // check if unknown effect bits set
-			logerror("unknown fx bits: %02x__ at %04x\n", line.fx_6400, 0x6400 + y*2);
+			logerror("unknown fx bits: %08llo at %04x\n", bin_oct(line.fx_6400), 0x6400 + y*2);
 	}
 	if (offs_t where = latched_addr(2, 3)) {
 		line.bg_palette = m_line_ram[where];
@@ -1192,17 +1116,6 @@ void taito_f3_state::draw_line(pen_t* dst, f3_line_inf &line, int xs, int xe, pi
 
 void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	int y_start, y_end, y_inc; // actual start and end, not same-efx grouping
-	if (m_flipscreen) {
-		y_start = 255;
-		y_end = -1;
-		y_inc = -1;
-	} else {
-		y_start = 0;
-		y_end = 256;
-		y_inc = 1;
-	}
-
 	// acquire sprite rendering layers, playfield tilemaps, playfield scroll
 	f3_line_inf line_data{};
 	for (int i=0; i<NUM_SPRITEGROUPS; i++) {
@@ -1214,10 +1127,7 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 		line_data.pf[pf].flagsbitmap = &m_tilemap[tmap_number]->flagsmap();
 
 		get_pf_scroll(pf, line_data.pf[pf].reg_sx, line_data.pf[pf].reg_sy);
-		// if (m_flipscreen)
-		// 	line_data.pf[pf].reg_fx_y = -line_data.pf[pf].reg_sy;
-		// else
-			line_data.pf[pf].reg_fx_y = line_data.pf[pf].reg_sy;
+		line_data.pf[pf].reg_fx_y = line_data.pf[pf].reg_sy;
 		line_data.pf[pf].x_scale = (256-0);
 	}
 	line_data.pivot.srcbitmap_pixel = &m_pixel_layer->pixmap();
@@ -1225,17 +1135,19 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 	line_data.pivot.srcbitmap_vram = &m_vram_layer->pixmap();
 	line_data.pivot.flagsbitmap_vram = &m_vram_layer->flagsmap();
 	if (m_flipscreen) {
-		line_data.pivot.reg_sx = (m_control_1[4]) - 12;
-		line_data.pivot.reg_sy = (m_control_1[5] & 0x1ff);
+		line_data.pivot.reg_sx = m_control_1[4] - 12;
+		line_data.pivot.reg_sy = m_control_1[5];
 	} else {
-		line_data.pivot.reg_sx = -(m_control_1[4]) - 5;
-		line_data.pivot.reg_sy = -(m_control_1[5] & 0x1ff);
+		line_data.pivot.reg_sx = -m_control_1[4] - 5;
+		line_data.pivot.reg_sy = -m_control_1[5];
 	}
 
 	auto prio = [](const auto& obj) -> u8 { return obj->prio(); };
 
 	//int ys = m_flipscreen ? 24 : 0;
-	for (int y = y_start; y != y_end; y += y_inc) {
+	for (int screen_y = 0; screen_y < 256; screen_y++) {
+		int y = m_flipscreen ? 255 - screen_y : screen_y;
+		
 		read_line_ram(line_data, y);
 		line_data.y = y;
 		for (auto &pri : line_data.pri_alp) {
@@ -1243,12 +1155,10 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 			pri.active_alpha = 0;
 			pri.alpha = 0;
 		}
-		int screen_y = m_flipscreen ? 255 - y : y;
-
-
+		
 		// sort layers
 		std::array<std::variant<pivot_inf*, sprite_inf*, playfield_inf*>,
-				   NUM_SPRITEGROUPS + NUM_TILEMAPS> layers = {
+				   NUM_SPRITEGROUPS + 1 + NUM_PLAYFIELDS> layers = {
 			&line_data.sp[0], &line_data.sp[1], &line_data.sp[2], &line_data.sp[3],
 			&line_data.pivot,
 			&line_data.pf[0], &line_data.pf[1], &line_data.pf[2], &line_data.pf[3],
@@ -1300,7 +1210,7 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 		bitmap.pix(y, dbgx++) = line_data.pivot.blend_a() ? 0xFF0000 : 0x000000;
 		*/
 
-		if (y != y_start) {
+		if (screen_y != 0) {
 			// update registers
 			for (auto &pf : line_data.pf) {
 				pf.reg_fx_y += pf.y_scale;
@@ -1501,18 +1411,17 @@ void taito_f3_state::draw_sprites(const rectangle &cliprect)
 		}
 	}
 
-	rectangle myclip = cliprect;
-	myclip &= m_pri_alp_bitmap.cliprect();
+	//rectangle myclip = cliprect;
+	//myclip &= m_pri_alp_bitmap.cliprect();
 
 	for (auto* spr = m_sprite_end; spr-- != &m_spritelist[0]; ) {
-		f3_drawgfx(*spr, myclip);
+		f3_drawgfx(*spr, cliprect);
 	}
 }
 
 /******************************************************************************/
 u32 taito_f3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	logerror("vpos screen update now: %d\n", m_screen->vpos());;
 
 	machine().tilemap().set_flip_all(m_flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
@@ -1524,13 +1433,9 @@ u32 taito_f3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, c
 	/* Draw final framebuffer */
 
 	scanline_draw_TWO(bitmap, cliprect);
-
-	// need to swap these to get more sprite lag sometimes ?
-	get_sprite_info(m_spriteram.target());
+	
 	// draw sprite layers
 	draw_sprites(cliprect);
 	
-	if (VERBOSE)
-		print_debug_info(bitmap);
 	return 0;
 }

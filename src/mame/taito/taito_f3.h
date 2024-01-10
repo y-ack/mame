@@ -27,12 +27,14 @@ public:
 		m_screen(*this, "screen"),
 		m_palette(*this, "palette"),
 		m_eeprom(*this, "eeprom"),
-		m_textram(*this, "textram", 0x2000, ENDIANNESS_BIG),
+		
 		m_spriteram(*this, "spriteram", 0x10000, ENDIANNESS_BIG),
+		m_pf_ram(*this, "pf_ram", 0xc000, ENDIANNESS_BIG),
+		m_textram(*this, "textram", 0x2000, ENDIANNESS_BIG),
 		m_charram(*this, "charram", 0x2000, ENDIANNESS_BIG),
 		m_line_ram(*this, "line_ram", 0x10000, ENDIANNESS_BIG),
-		m_pf_ram(*this, "pf_ram", 0xc000, ENDIANNESS_BIG),
 		m_pivot_ram(*this, "pivot_ram", 0x10000, ENDIANNESS_BIG),
+		
 		m_input(*this, "IN.%u", 0),
 		m_dial(*this, "DIAL.%u", 0),
 		m_eepromin(*this, "EEPROMIN"),
@@ -153,13 +155,30 @@ protected:
 	required_device<palette_device> m_palette;
 	optional_device<eeprom_serial_base_device> m_eeprom;
 
-	memory_share_creator<u16> m_textram;
 	memory_share_creator<u16> m_spriteram;
+	memory_share_creator<u16> m_pf_ram;
+	memory_share_creator<u16> m_textram;
 	memory_share_creator<u16> m_charram;
 	memory_share_creator<u16> m_line_ram;
-	memory_share_creator<u16> m_pf_ram;
 	memory_share_creator<u16> m_pivot_ram;
+	u16 m_control_0[8]{};
+	u16 m_control_1[8]{};
 
+	u16 spriteram_r(offs_t offset);
+	void spriteram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	u16 pf_ram_r(offs_t offset);
+	void pf_ram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	u16 textram_r(offs_t offset);
+	void textram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	u16 charram_r(offs_t offset);
+	void charram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	u16 lineram_r(offs_t offset);
+	void lineram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	u16 pivot_r(offs_t offset);
+	void pivot_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	void control_0_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	void control_1_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	
 	optional_ioport_array<6> m_input;
 	optional_ioport_array<2> m_dial;
 	optional_ioport m_eepromin;
@@ -180,7 +199,6 @@ protected:
 	};
 
 	static const int NUM_PLAYFIELDS = 4;
-	static const int NUM_TILEMAPS = 5;
 	static const int NUM_SPRITEGROUPS = 4; // high 2 bits of color
 	static const int NUM_CLIPPLANES = 4;
 	struct clip_plane_inf {
@@ -300,8 +318,6 @@ protected:
 	tilemap_t *m_pixel_layer = nullptr;
 	tilemap_t *m_vram_layer = nullptr;
 	//std::unique_ptr<u16[]> m_spriteram16_buffered;
-	u16 m_control_0[8]{};
-	u16 m_control_1[8]{};
 	bool m_flipscreen = false;
 	bool m_extend = false;
 	u8 m_sprite_extra_planes = 0;
@@ -323,21 +339,6 @@ protected:
 	//f3_line_inf m_line_inf;
 	const F3config *m_game_config = nullptr;
 
-	u16 pf_ram_r(offs_t offset);
-	void pf_ram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	void control_0_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	void control_1_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 spriteram_r(offs_t offset);
-	void spriteram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 textram_r(offs_t offset);
-	void textram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 charram_r(offs_t offset);
-	void charram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 pivot_r(offs_t offset);
-	void pivot_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 lineram_r(offs_t offset);
-	void lineram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-
 	template<unsigned Layer> TILE_GET_INFO_MEMBER(get_tile_info);
 	TILE_GET_INFO_MEMBER(get_tile_info_text);
 	TILE_GET_INFO_MEMBER(get_tile_info_pixel);
@@ -354,7 +355,6 @@ protected:
 	inline void f3_drawgfx(const tempsprite &sprite, const rectangle &cliprect);
 	void draw_sprites(const rectangle &cliprect);
 	void get_sprite_info(const u16 *spriteram16_ptr);
-	void print_debug_info(bitmap_rgb32 &bitmap);
 	void read_line_ram(f3_line_inf &line, int y);
 	std::vector<clip_plane_inf> calc_clip(const clip_plane_inf (&clip)[NUM_CLIPPLANES], const mixable *line);
 	void scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cliprect);
