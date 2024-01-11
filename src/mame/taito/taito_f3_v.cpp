@@ -406,10 +406,10 @@ TILE_GET_INFO_MEMBER(taito_f3_state::get_tile_info_pixel)
 	// we simulate this using a hack, checking the scroll offset to determine which version of the pixel layer is visible
 	// technically this means we should dirty parts of the pixel layer, if the scroll or flipscreen changes.. but we don't   nnnn
 	// (really we should just apply the palette during rendering instead of this, i suppose)
-	int y_offs = m_control_1[5];
+	int y_offs = y * 8 + m_control_1[5];
 	if (m_flipscreen)
 		y_offs += 0x100; // this could just as easily be ^= 0x100 or -= 0x100, since that's the highest bit.
-	if (((y * 8 + y_offs) & 0x1ff) >= 256)
+	if ((y_offs & 0x1ff) >= 256)
 		y += 32;
 	
 	const u16 vram_tile = m_textram[y << 6 | x];
