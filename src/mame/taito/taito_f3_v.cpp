@@ -277,13 +277,15 @@ Playfield tile info:
 #define VERBOSE 0
 #define TAITOF3_VIDEO_DEBUG 0
 
-static u64 bin_oct(u16 x) {
+/*static u64 bin_oct(u16 x) {
 	u64 y = 0;
 	for (int i=0; i<16; i++) {
 		y |= BIT(x, i) << (i*3);
 	}
 	return y;
-}
+	}
+// format code: "%016llo"
+*/
 
 // Game specific data - some of this can be removed when the software values are figured out
 struct taito_f3_state::F3config
@@ -368,52 +370,55 @@ TILE_GET_INFO_MEMBER(taito_f3_state::get_tile_info)
 	tileinfo.pen_mask = ((extra_planes & ~palette_code) << 4) | 0x0f;
 }
 
+// text tile info:
+// [yccc cccx tttt tttt]
+// y: y flip
+// c: palette
+// x: x flip
+// t: tile number
+static u8 get_vram_flips(u16 vram_tile) {
+	u8 flags = 0;
+	if (BIT(vram_tile,  8)) flags |= TILE_FLIPX;
+	if (BIT(vram_tile, 15)) flags |= TILE_FLIPY;
+	return flags
+}
 
 TILE_GET_INFO_MEMBER(taito_f3_state::get_tile_info_text)
 {
 	const u16 vram_tile = m_textram[tile_index];
-	// text tile info:
-	// [yccc cccx tttt tttt]
-	// y: y flip
-	// c: palette
-	// x: x flip
-	// t: tile number
-
-	u8 flags = 0;
-	if (BIT(vram_tile,  8)) flags |= TILE_FLIPX;
-	if (BIT(vram_tile, 15)) flags |= TILE_FLIPY;
-
-	tileinfo.set(0,
-			vram_tile & 0xff,
-			BIT(vram_tile, 9, 6),
-			flags);
+	int tile = BIT(vram_tile, 0, 8);
+	u8 palette = BIT(vram_tile, 9, 6);
+	u8 flags = get_vram_flips(vram_tile);
+	
+	tileinfo.set(0, tile, palette, flags);
 }
 
 TILE_GET_INFO_MEMBER(taito_f3_state::get_tile_info_pixel)
 {
-	int y_offs = BIT(m_control_1[5], 0, 9);
+	/* attributes are shared with VRAM layer */
+	// convert the index:
+	// pixel: [0xxxxxxyyyyy]
+	//  text: [?yyyyyxxxxxx]
+	int y = BIT(tile_index, 0, 5);
+	int x = BIT(tile_index, 5, 6);
+	// the pixel layer is 256px high, but uses the palette from the text layer which is twice as long
+	// so normally it only uses the first half of textram, but if you scroll down, you get an alternate version of the pixel layer which gets its palette data from the second half of textram
+	// we simulate this using a hack, checking the scroll offset to determine which version of the pixel layer is visible
+	// technically this means we should dirty parts of the pixel layer, if the scroll or flipscreen changes.. but we don't   nnnn
+	// (really we should just apply the palette during rendering instead of this, i suppose)
+	int y_offs = m_control_1[5];
 	if (m_flipscreen)
-		y_offs += 0x100;
-
-	/* Colour is shared with VRAM layer */
-	// lllllllhhhhh ??
-	//+ hhhhh
-	//+     lllllll
-	int col_off = (BIT(tile_index, 0, 5) << 6) + BIT(tile_index, 5, 7);
-	if (((BIT(tile_index, 0, 5) * 8 + y_offs) & 0x1ff) > 0xff)
-		col_off += 0x800;
-	// edits here are untested
+		y_offs += 0x100; // this could just as easily be ^= 0x100 or -= 0x100, since that's the highest bit.
+	if (((y * 8 + y_offs) & 0x1ff) >= 256)
+		y += 32;
 	
-	const u16 vram_tile = m_textram[col_off];
-
-	u8 flags = 0;
-	if (BIT(vram_tile,  8)) flags |= TILE_FLIPX;
-	if (BIT(vram_tile, 15)) flags |= TILE_FLIPY;
-
-	tileinfo.set(1,
-			tile_index,
-			BIT(vram_tile, 9, 6),
-			flags);
+	const u16 vram_tile = m_textram[y << 6 | x];
+	
+	const int tile = tile_index;
+	const u8 palette = BIT(vram_tile, 9, 6);
+	const u8 flags = get_vram_flips(vram_tile);
+	
+	tileinfo.set(1, tile, palette, flags);
 }
 
 /******************************************************************************/
@@ -453,7 +458,7 @@ void taito_f3_state::set_extend(bool state) {
 	}
 	
 	if (m_extend) {
-		m_width_mask = 0x3ff; // 11 bits
+		m_width_mask = 0x3ff; // 10 bits
 		for (int i=0; i<4; i++)
 			m_pf_data[i] = &m_pf_ram[(0x2000 * i) / 2];
 	} else {
@@ -635,16 +640,15 @@ void taito_f3_state::textram_w(offs_t offset, u16 data, u16 mem_mask)
 	COMBINE_DATA(&m_textram[offset]);
 
 	m_vram_layer->mark_tile_dirty(offset);
-	//m_vram_layer->mark_tile_dirty(offset + 1);
-
-	// is this supposed to be mirroring?
-	if (offset > 0x7ff) offset -= 0x800;
-
-	const int tile = offset;
-	const int col_off = ((tile & 0x3f) << 5) + ((tile & 0xfc0) >> 6);
-
+	
+	// dirty the pixel layer too, since it uses palette etc. from text layer
+	// convert the position (x and y are swapped, and the upper bit of y is ignored)
+	//  text: [Yyyyyyxxxxxx]
+	// pixel: [0xxxxxxyyyyy]
+	int y = BIT(offset, 6, 5);
+	int x = BIT(offset, 0, 6);
+	int col_off = x << 5 | y;
 	m_pixel_layer->mark_tile_dirty(col_off);
-	//m_pixel_layer->mark_tile_dirty(col_off+32);
 }
 
 
@@ -783,7 +787,7 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 
 		line.fx_6400 = BIT(x_mosaic, 10, 6) << 2;
 		if (line.fx_6400 && line.fx_6400 != 0x70) // check if unknown effect bits set
-			logerror("unknown fx bits: %08llo at %04x\n", bin_oct(line.fx_6400), 0x6400 + y*2);
+			logerror("unknown fx bits: %02x__ at %04x\n", line.fx_6400, 0x6400 + y*2);
 	}
 	if (offs_t where = latched_addr(2, 3)) {
 		line.bg_palette = m_line_ram[where];

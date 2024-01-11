@@ -29,7 +29,7 @@ public:
 		m_eeprom(*this, "eeprom"),
 		
 		m_spriteram(*this, "spriteram", 0x10000, ENDIANNESS_BIG),
-		m_pf_ram(*this, "pf_ram", 0xc000, ENDIANNESS_BIG),
+		m_pf_ram(*this, "pf_ram", 0xc000, ENDIANNESS_BIG), // should be 0x8000? upper 4000 isnt used
 		m_textram(*this, "textram", 0x2000, ENDIANNESS_BIG),
 		m_charram(*this, "charram", 0x2000, ENDIANNESS_BIG),
 		m_line_ram(*this, "line_ram", 0x10000, ENDIANNESS_BIG),
