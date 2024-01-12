@@ -403,7 +403,7 @@ TILE_GET_INFO_MEMBER(taito_f3_state::get_tile_info_pixel)
 	int x = BIT(tile_index, 5, 6);
 	// the pixel layer is 256px high, but uses the palette from the text layer which is twice as long
 	// so normally it only uses the first half of textram, but if you scroll down, you get an alternate version of the pixel layer which gets its palette data from the second half of textram
-	// we simulate this using a hack, checking the scroll offset to determine which version of the pixel layer is visible
+	// we simulate this using a hack, checking the scroll offset to determine which version of the pixel layer is visible (not sure if this fully works, it's old code)
 	// technically this means we should dirty parts of the pixel layer, if the scroll or flipscreen changes.. but we don't   nnnn
 	// (really we should just apply the palette during rendering instead of this, i suppose)
 	int y_offs = y * 8 + m_control_1[5];
@@ -411,6 +411,7 @@ TILE_GET_INFO_MEMBER(taito_f3_state::get_tile_info_pixel)
 		y_offs += 0x100; // this could just as easily be ^= 0x100 or -= 0x100, since that's the highest bit.
 	if ((y_offs & 0x1ff) >= 256)
 		y += 32;
+	// (i've rewritten this and tested that it produces the exact same results as the original)
 	
 	const u16 vram_tile = m_textram[y << 6 | x];
 	
