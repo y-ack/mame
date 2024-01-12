@@ -245,7 +245,7 @@ protected:
 
 		// mosaic enable in 6400
 		bool brightness{false}; // 7400 0xf000
-		bitmap_ind16* srcbitmap;
+		u8 group;
 	};
 
 	struct pivot_inf : mixable {
@@ -326,8 +326,7 @@ protected:
 	u16 *m_pf_data[8]{};
 	int m_sprite_lag = 0;
 	//u8 m_sprite_pri_usage = 0;
-	bitmap_ind8 m_pri_alp_bitmap;
-	bitmap_ind16 m_sprite_framebuffers[NUM_SPRITEGROUPS]{};
+	bitmap_ind16 m_sprite_framebuffer {};
 	u16 m_width_mask = 0;
 	u8 m_twidth_mask = 0;
 	u8 m_twidth_mask_bit = 0;

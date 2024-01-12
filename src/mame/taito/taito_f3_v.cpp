@@ -380,7 +380,7 @@ static u8 get_vram_flips(u16 vram_tile) {
 	u8 flags = 0;
 	if (BIT(vram_tile,  8)) flags |= TILE_FLIPX;
 	if (BIT(vram_tile, 15)) flags |= TILE_FLIPY;
-	return flags
+	return flags;
 }
 
 TILE_GET_INFO_MEMBER(taito_f3_state::get_tile_info_text)
@@ -497,10 +497,7 @@ void taito_f3_state::video_start()
 	m_vram_layer = &machine().tilemap().create(*m_gfxdecode, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info_text)), TILEMAP_SCAN_ROWS, 8, 8, 64, 64);
 	m_pixel_layer = &machine().tilemap().create(*m_gfxdecode, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info_pixel)), TILEMAP_SCAN_COLS, 8, 8, 64, 32);
 	//m_line_inf = std::make_unique<f3_line_inf[]>(256);
-	m_screen->register_screen_bitmap(m_pri_alp_bitmap);
-	for (auto &sp_bitmap : m_sprite_framebuffers) {
-		m_screen->register_screen_bitmap(sp_bitmap);
-	}
+	m_screen->register_screen_bitmap(m_sprite_framebuffer);
 	m_tile_opaque_sp = std::make_unique<u8[]>(m_gfxdecode->gfx(2)->elements());
 	for (auto &tile_opaque : m_tile_opaque_pf)
 		tile_opaque = std::make_unique<u8[]>(m_gfxdecode->gfx(3)->elements());
@@ -1067,7 +1064,8 @@ void taito_f3_state::draw_line(pen_t* dst, f3_line_inf &line, int xs, int xe, sp
 {
 	const pen_t *clut = &m_palette->pen(0);
 	const int y = m_flipscreen ? (255) - line.y : line.y;
-	const u16 *src = &sp->srcbitmap->pix(y);
+	const u16 *src = &m_sprite_framebuffer.pix(y);
+	const int num = sp->group; //sp - &line.sp[0]; // eehehe
 
 	const u8 blend_mode = sp->blend_mask();
 	//logerror("pri/alp: %X %X\n", line.pri_alp[180].pri, line.pri_alp[180].alpha);	
@@ -1078,7 +1076,8 @@ void taito_f3_state::draw_line(pen_t* dst, f3_line_inf &line, int xs, int xe, sp
 
 			int real_x = sp->x_sample_enable ? mosaic(x, line.x_sample) : x;
 
-			if (const u16 col = src[real_x]) { // 0 = transparent
+			const u16 col = src[real_x];
+			if (col && BIT(col >> 4, 6, 2) == num) {
 				const bool sel = sp->brightness;
 				blend_dispatch(sp->blend_mask(), sel, sp->prio(),
 							   line.blend, line.pri_alp[x], dst[x], clut[col]);
@@ -1123,9 +1122,6 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 {
 	// acquire sprite rendering layers, playfield tilemaps, playfield scroll
 	f3_line_inf line_data{};
-	for (int i=0; i<NUM_SPRITEGROUPS; i++) {
-		line_data.sp[i].srcbitmap = &m_sprite_framebuffers[i];
-	}
 	for (int pf = 0; pf < NUM_PLAYFIELDS; ++pf) {
 		int tmap_number = pf + line_data.pf[pf].alt_tilemap * 2;
 		line_data.pf[pf].srcbitmap = &m_tilemap[tmap_number]->pixmap();
@@ -1134,6 +1130,9 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 		get_pf_scroll(pf, line_data.pf[pf].reg_sx, line_data.pf[pf].reg_sy);
 		line_data.pf[pf].reg_fx_y = line_data.pf[pf].reg_sy;
 		line_data.pf[pf].x_scale = (256-0);
+	}
+	for (int i = 0; i < NUM_SPRITEGROUPS; ++i) {
+		line_data.sp[i].group = i;
 	}
 	line_data.pivot.srcbitmap_pixel = &m_pixel_layer->pixmap();
 	line_data.pivot.flagsbitmap_pixel = &m_pixel_layer->flagsmap();
@@ -1228,7 +1227,7 @@ void taito_f3_state::scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cl
 
 inline void taito_f3_state::f3_drawgfx(const tempsprite &sprite, const rectangle &cliprect)
 {
-	bitmap_ind16 &dest_bmp = m_sprite_framebuffers[sprite.pri];
+	bitmap_ind16 &dest_bmp = m_sprite_framebuffer;
 	
 	gfx_element *gfx = m_gfxdecode->gfx(2);
 	const u8 *code_base = gfx->get_data(sprite.code % gfx->elements());
@@ -1245,7 +1244,6 @@ inline void taito_f3_state::f3_drawgfx(const tempsprite &sprite, const rectangle
 		dy8 += sprite.scale_y;
 		if (dy < cliprect.min_y || dy > cliprect.max_y)
 			continue;
-		u8 *pri = &m_pri_alp_bitmap.pix(dy);
 		u16* dest = &dest_bmp.pix(dy);
 		auto src = &code_base[(y ^ flipy) * 16];
 
@@ -1259,9 +1257,8 @@ inline void taito_f3_state::f3_drawgfx(const tempsprite &sprite, const rectangle
 			if (dx == dx8 >> 8) // if the next pixel would be in the same column, skip this one
 				continue;
 			const auto c = src[(x ^ flipx)] & m_sprite_pen_mask;
-			if (c && !pri[dx]) {
+			if (c) {
 				dest[dx] = gfx->colorbase() + (sprite.color<<4 | c);
-				pri[dx] = 1;
 			}
 		}
 	}
@@ -1410,16 +1407,13 @@ void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
 void taito_f3_state::draw_sprites(const rectangle &cliprect)
 {
 	if (!m_sprite_trails) {
-		m_pri_alp_bitmap.fill(0);
-		for (auto &sp_bitmap : m_sprite_framebuffers) {
-			sp_bitmap.fill(0);
-		}
+		m_sprite_framebuffer.fill(0);
 	}
 
 	//rectangle myclip = cliprect;
 	//myclip &= m_pri_alp_bitmap.cliprect();
 
-	for (auto* spr = m_sprite_end; spr-- != &m_spritelist[0]; ) {
+	for (auto* spr = &m_spritelist[0]; spr != m_sprite_end; spr++) {
 		f3_drawgfx(*spr, cliprect);
 	}
 }
