@@ -427,7 +427,7 @@ TILE_GET_INFO_MEMBER(taito_f3_state::get_tile_info_pixel)
 void taito_f3_state::screen_vblank(int state)
 {
 	if (state) {
-		get_sprite_info(m_spriteram.target());
+		//get_sprite_info();
 	}
 }
 
@@ -1264,8 +1264,10 @@ inline void taito_f3_state::f3_drawgfx(const tempsprite &sprite, const rectangle
 	}
 }
 
-void taito_f3_state::get_sprite_info(const u16 *spriteram16_ptr)
+void taito_f3_state::get_sprite_info()
 {
+	const u16 *spriteram16_ptr = m_spriteram.target();
+
 	struct sprite_axis
 	{
 		fixed8 block_scale = 1 << 8;
@@ -1426,15 +1428,19 @@ u32 taito_f3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, c
 
 	bitmap.fill(0, cliprect);
 
-	/* Update sprite buffer */
-	//draw_sprites(bitmap, cliprect);
-
-	/* Draw final framebuffer */
-
-	scanline_draw_TWO(bitmap, cliprect);
-	
-	// draw sprite layers
-	draw_sprites(cliprect);
+	if (m_sprite_lag == 0) {
+		get_sprite_info();
+		draw_sprites(cliprect);
+		scanline_draw_TWO(bitmap, cliprect);
+	} else if (m_sprite_lag == 1) {
+		scanline_draw_TWO(bitmap, cliprect);
+		get_sprite_info();
+		draw_sprites(cliprect);
+	} else { // 2
+		scanline_draw_TWO(bitmap, cliprect);
+		draw_sprites(cliprect);
+		get_sprite_info();
+	}
 	
 	return 0;
 }

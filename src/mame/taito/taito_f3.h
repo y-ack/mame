@@ -353,7 +353,7 @@ protected:
 
 	inline void f3_drawgfx(const tempsprite &sprite, const rectangle &cliprect);
 	void draw_sprites(const rectangle &cliprect);
-	void get_sprite_info(const u16 *spriteram16_ptr);
+	void get_sprite_info();
 	void read_line_ram(f3_line_inf &line, int y);
 	std::vector<clip_plane_inf> calc_clip(const clip_plane_inf (&clip)[NUM_CLIPPLANES], const mixable *line);
 	void scanline_draw_TWO(bitmap_rgb32 &bitmap, const rectangle &cliprect);
