@@ -461,10 +461,19 @@ void taito_f3_state::f3(machine_config &config)
 
 	/* video hardware */
 	SCREEN(config, m_screen, SCREEN_TYPE_RASTER);
-	m_screen->set_refresh_hz(58.97);
-	m_screen->set_vblank_time(ATTOSECONDS_IN_USEC(624)); /* 58.97 Hz, 624us vblank time */
-	m_screen->set_size(40*8+48*2, 32*8);
-	m_screen->set_visarea(46, 40*8-1 + 46, 24, 24+232-1);
+	// from taito z system and crystal on board  not sure if correct?
+	// and measurements from https://www.arcade-projects.com/threads/the-taito-f3-sync.12343/?
+	m_screen->set_raw(
+		XTAL(26'686'000)/4,
+		432, 0, 320+46,
+		262, 24, 256
+	);
+	// refresh rate = 26686000/4/432/262 = 58.94..
+	
+	//m_screen->set_refresh_hz(58.97);
+	//m_screen->set_vblank_time(ATTOSECONDS_IN_USEC(624)); /* 58.97 Hz, 624us vblank time */
+	//m_screen->set_size(40*8+48*2, 32*8);
+	//m_screen->set_visarea(46, 40*8-1 + 46, 24, 24+232-1);
 	m_screen->set_screen_update(FUNC(taito_f3_state::screen_update));
 	m_screen->screen_vblank().set(FUNC(taito_f3_state::screen_vblank));
 
@@ -488,19 +497,19 @@ void taito_f3_state::f3(machine_config &config)
 void taito_f3_state::f3_224a(machine_config &config)
 {
 	f3(config);
-	m_screen->set_visarea(46, 40*8-1 + 46, 31, 31+224-1);
+	m_screen->set_visarea(0, 40*8-1 + 46, 31, 31+224-1);
 }
 
 void taito_f3_state::f3_224b(machine_config &config)
 {
 	f3(config);
-	m_screen->set_visarea(46, 40*8-1 + 46, 32, 32+224-1);
+	m_screen->set_visarea(0, 40*8-1 + 46, 32, 32+224-1);
 }
 
 void taito_f3_state::f3_224c(machine_config &config)
 {
 	f3(config);
-	m_screen->set_visarea(46, 40*8-1 + 46, 24, 24+224-1);
+	m_screen->set_visarea(0, 40*8-1 + 46, 24, 24+224-1);
 }
 
 static const gfx_layout bubsympb_sprite_layout =
