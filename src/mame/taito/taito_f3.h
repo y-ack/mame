@@ -238,10 +238,10 @@ protected:
 	};
 
 	struct mix_pix { // per-pixel information for the blending circuit
-		u16 src_pal{0};
-		u16 dst_pal{0};
-		u8  src_blend{0x00};
-		u8  dst_blend{0xff};
+		u16 src_pal[H_TOTAL];
+		u16 dst_pal[H_TOTAL];
+		u8  src_blend[H_TOTAL];
+		u8  dst_blend[H_TOTAL];
 	};
 
 	struct f3_line_inf;
@@ -271,7 +271,7 @@ protected:
 
 		bool used(int y) const { return true; };
 		u8 debug_index{0};
-		const char *debug_name() { return "MX"; };
+		const char *debug_name() const { return "MX"; };
 	};
 
 	struct sprite_inf : mixable {
@@ -285,7 +285,7 @@ protected:
 
 		u8 (*sprite_pri_usage)[256]{nullptr};
 		bool used(int y) const { return (*sprite_pri_usage)[y] & (1<<debug_index); }
-		const char *debug_name() { return "SP"; };
+		const char *debug_name() const { return "SP"; };
 	};
 
 	struct pivot_inf : mixable {
@@ -301,7 +301,7 @@ protected:
 		u16 reg_sy{0};
 		inline int y_index(int y) const;
 		inline int x_index(int x) const;
-		const char *debug_name() { return "PV"; };
+		const char *debug_name() const { return "PV"; };
 	};
 
 	struct playfield_inf : mixable {
@@ -324,14 +324,14 @@ protected:
 		inline int y_index(int y) const;
 		inline int x_index(int x) const;
 		bool blend_select(const u8 *line_flags, int x) const { return BIT(line_flags[x], 0); };
-		const char *debug_name() { return "PF"; };
+		const char *debug_name() const { return "PF"; };
 	};
 
 	struct pri_mode {
-		u8 src_prio{0};
-		u8 dst_prio{0};
-		u8 src_blendmode{0xff};
-		u8 dst_blendmode{0xff};
+		u8 src_prio[H_TOTAL]{};
+		u8 dst_prio[H_TOTAL]{};
+		u8 src_blendmode[H_TOTAL]{};
+		u8 dst_blendmode[H_TOTAL]{};
 	};
 
 	struct f3_line_inf {
@@ -412,12 +412,12 @@ protected:
 	void draw_sprites(const rectangle &cliprect);
 	void get_pf_scroll(int pf_num, fixed8 &reg_sx, fixed8 &reg_sy);
 	void read_line_ram(f3_line_inf &line, int y);
-	void render_line(pen_t *dst, const mix_pix (&z)[432]);
+	void render_line(pen_t *dst, const mix_pix &z);
 	void scanline_draw(bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	template<typename Mix>
 	std::vector<clip_plane_inf> calc_clip(const clip_plane_inf (&clip)[NUM_CLIPPLANES], const Mix line);
 	template<typename Mix>
-	bool mix_line(Mix *gfx, mix_pix *z, pri_mode *pri, const f3_line_inf &line, const clip_plane_inf &range);
+	bool mix_line(const Mix *gfx, mix_pix &z, pri_mode &pri, const f3_line_inf &line, const clip_plane_inf &range);
 
 
 private:
