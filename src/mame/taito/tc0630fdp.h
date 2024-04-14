@@ -1,0 +1,8 @@
+#ifndef MAME_TAITO_TC0630FDP_H
+#define MAME_TAITO_TC0630FDP_H
+
+#pragma once
+
+
+
+#endif // MAME_TAITO_TC0630FDP_H
