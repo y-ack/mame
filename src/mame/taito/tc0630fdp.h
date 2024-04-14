@@ -13,8 +13,13 @@ public:
 	
 	virtual void device_start() override;
 	
+	void tile_decode();
+	
 	DECLARE_GFXDECODE_MEMBER(gfxinfo);
 	DECLARE_GFXDECODE_MEMBER(gfx_bubsympb);
+	
+	std::unique_ptr<u8[]> m_decoded_gfx4;
+	std::unique_ptr<u8[]> m_decoded_gfx5;
 };
 
 DECLARE_DEVICE_TYPE(TC0630FDP, FDP)

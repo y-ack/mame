@@ -407,8 +407,6 @@ void taito_f3_state::f3(machine_config &config)
 	TC0630FDP(config, m_fdp, 26.686_MHz_XTAL / 4);
 	m_fdp->set_palette(m_palette);
 	
-	//GFXDECODE(config, m_gfxdecode, m_palette, FDP::gfx_taito_f3);
-	
 	/* sound hardware */
 	SPEAKER(config, "lspeaker").front_left();
 	SPEAKER(config, "rspeaker").front_right();
@@ -466,8 +464,6 @@ void taito_f3_state::bubsympb(machine_config &config)
 	TC0630FDP(config, m_fdp, 26.686_MHz_XTAL / 4);
 	m_fdp->set_palette(m_palette);
 	
-	//GFXDECODE(config, m_gfxdecode, m_palette, FDP::gfx_bubsympb);
-
 	/* sound hardware */
 	SPEAKER(config, "mono").front_center();
 
@@ -4227,198 +4223,118 @@ ROM_END
 
 /******************************************************************************/
 
-void taito_f3_state::tile_decode()
-{
-	/* Setup ROM formats:
-
-	    Some games will only use 4 or 5 bpp sprites, and some only use 4 bpp tiles,
-	    I don't believe this is software or prom controlled but simply the unused data lines
-	    are tied low on the game board if unused.  This is backed up by the fact the palette
-	    indices are always related to 4 bpp data, even in 6 bpp games.
-
-	    Most (all?) games with 5bpp tiles have the sixth bit set. Also, in Arabian Magic
-	    sprites 1200-120f contain 6bpp data which is probably bogus.
-	    video_start clears the fifth and sixth bit of the decoded graphics according
-	    to the bit depth specified in f3_config_table.
-
-	*/
-
-	u8 *dest;
-	// all but bubsymphb (bootleg board with different sprite gfx layout), 2mindril (no sprite gfx roms)
-	if (m_fdp->gfx(5) != nullptr) {
-		gfx_element *spr_gfx = m_fdp->gfx(2);
-		gfx_element *spr_gfx_hi = m_fdp->gfx(5);
-
-		// allocate memory for the assembled data
-		m_decoded_gfx5 = std::make_unique<u8[]>(spr_gfx->elements() * spr_gfx->width() * spr_gfx->height());
-
-		// loop over elements
-		dest = m_decoded_gfx5.get();
-		for (int c = 0; c < spr_gfx->elements(); c++) {
-			const u8 *c1base = spr_gfx->get_data(c);
-			const u8 *c3base = spr_gfx_hi->get_data(c);
-
-			// loop over height
-			for (int y = 0; y < spr_gfx->height(); y++) {
-				const u8 *c1 = c1base;
-				const u8 *c3 = c3base;
-
-				/* Expand 2bits into 4bits format */
-				for (int x = 0; x < spr_gfx->width(); x++)
-					*dest++ = (*c1++ & 0xf) | (*c3++ & 0x30);
-
-				c1base += spr_gfx->rowbytes();
-				c3base += spr_gfx_hi->rowbytes();
-			}
-		}
-
-		spr_gfx->set_raw_layout(m_decoded_gfx5.get(), spr_gfx->width(), spr_gfx->height(), spr_gfx->elements(), 8 * spr_gfx->width(), 8 * spr_gfx->width() * spr_gfx->height());
-		m_fdp->set_gfx(5, nullptr);
-	}
-
-	if (m_fdp->gfx(4) != nullptr) {
-		gfx_element *pf_gfx = m_fdp->gfx(3);
-		gfx_element *pf_gfx_hi = m_fdp->gfx(4);
-
-		// allocate memory for the assembled data
-		m_decoded_gfx4 = std::make_unique<u8[]>(pf_gfx->elements() * pf_gfx->width() * pf_gfx->height());
-
-		// loop over elements
-		dest = m_decoded_gfx4.get();
-		for (int c = 0; c < pf_gfx->elements(); c++) {
-			const u8 *c0base = pf_gfx->get_data(c);
-			const u8 *c2base = pf_gfx_hi->get_data(c);
-
-			// loop over height
-			for (int y = 0; y < pf_gfx->height(); y++) {
-				const u8 *c0 = c0base;
-				const u8 *c2 = c2base;
-
-				for (int x = 0; x < pf_gfx->width(); x++)
-					*dest++ = (*c0++ & 0xf) | (*c2++ & 0x30);
-
-				c0base += pf_gfx->rowbytes();
-				c2base += pf_gfx_hi->rowbytes();
-			}
-		}
-
-		pf_gfx->set_raw_layout(m_decoded_gfx4.get(), pf_gfx->width(), pf_gfx->height(), pf_gfx->elements(), 8 * pf_gfx->width(), 8 * pf_gfx->width() * pf_gfx->height());
-		m_fdp->set_gfx(4, nullptr);
-	}
-}
-
 void taito_f3_state::init_ringrage()
 {
 	m_game=RINGRAGE;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_arabianm()
 {
 	m_game=ARABIANM;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_ridingf()
 {
 	m_game=RIDINGF;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_gseeker()
 {
 	m_game=GSEEKER;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_gunlock()
 {
 	m_game=GUNLOCK;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_elvactr()
 {
 	m_game=EACTION2;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_cupfinal()
 {
 	m_game=SCFINALS;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_trstaroj()
 {
 	m_game=TRSTAR;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_scfinals()
 {
 	m_game=SCFINALS;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_lightbr()
 {
 	m_game=LIGHTBR;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_kaiserkn()
 {
 	m_game=KAISERKN;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_dariusg()
 {
 	m_game=DARIUSG;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_spcinvdj()
 {
 	m_game=SPCINVDX;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_qtheater()
 {
 	m_game=QTHEATER;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_spcinv95()
 {
 	m_game=SPCINV95;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_gekirido()
 {
 	m_game=GEKIRIDO;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_ktiger2()
 {
 	m_game=KTIGER2;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_bubsymph()
 {
 	m_game=BUBSYMPH;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_bubsympb()
 {
 	m_game=BUBSYMPH;
-	tile_decode();
+	m_fdp->tile_decode();
 
 	// almost certainly wrong
 	m_okibank->configure_entries(0, 5, memregion("oki")->base() + 0x30000, 0x10000);
@@ -4427,25 +4343,25 @@ void taito_f3_state::init_bubsympb()
 void taito_f3_state::init_bubblem()
 {
 	m_game=BUBBLEM;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_cleopatr()
 {
 	m_game=CLEOPATR;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_popnpop()
 {
 	m_game=POPNPOP;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_landmakr()
 {
 	m_game=LANDMAKR;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_landmkrp()
@@ -4460,31 +4376,31 @@ void taito_f3_state::init_landmkrp()
 	ROM[0x1ffffc/4]=0xffff0003; /* From 0xffff00ff */
 
 	m_game=LANDMAKR;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_pbobble3()
 {
 	m_game=PBOBBLE3;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_pbobble4()
 {
 	m_game=PBOBBLE4;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_quizhuhu()
 {
 	m_game=QUIZHUHU;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_pbobble2()
 {
 	m_game=PBOBBLE2;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_pbobbl2p()
@@ -4500,61 +4416,61 @@ void taito_f3_state::init_pbobbl2p()
 	ROM[0x40094/4]=0x4e714e71;
 
 	m_game=PBOBBLE2;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_pbobbl2x()
 {
 	m_game=PBOBBLE2;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_hthero95()
 {
 	m_game=HTHERO95;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_kirameki()
 {
 	m_game=KIRAMEKI;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_puchicar()
 {
 	m_game=PUCHICAR;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_twinqix()
 {
 	m_game=TWINQIX;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_arkretrn()
 {
 	m_game=ARKRETRN;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_intcup94()
 {
 	m_game=SCFINALS;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_recalh()
 {
 	m_game=RECALH;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_commandw()
 {
 	m_game=COMMANDW;
-	tile_decode();
+	m_fdp->tile_decode();
 }
 
 /******************************************************************************/
