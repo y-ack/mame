@@ -6,6 +6,7 @@
 #pragma once
 
 #include "taito_en.h"
+#include "tc0630fdp.h"
 #include "machine/eepromser.h"
 #include "machine/watchdog.h"
 #include "sound/okim6295.h"
@@ -35,6 +36,7 @@ public:
 		m_dial(*this, "DIAL.%u", 0),
 		m_eepromin(*this, "EEPROMIN"),
 		m_eepromout(*this, "EEPROMOUT"),
+		m_fdp(*this, "tc0630fdp"),
 		m_taito_en(*this, "taito_en"),
 		m_oki(*this, "oki"),
 		m_paletteram32(*this, "paletteram"),
@@ -421,9 +423,10 @@ protected:
 
 
 private:
+	required_device<FDP> m_fdp;
 	optional_device<taito_en_device> m_taito_en;
 	optional_device<okim6295_device> m_oki;
-
+	
 	optional_shared_ptr<u32> m_paletteram32;
 	optional_memory_bank m_okibank;
 
