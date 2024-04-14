@@ -350,57 +350,6 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-static const gfx_layout charlayout = {
-	8,8,
-	256,
-	4,
-	{ 0,1,2,3 },
-	{ 20, 16, 28, 24, 4, 0, 12, 8 },
-	{ STEP8(0,4*8) },
-	32*8
-};
-
-static const gfx_layout pivotlayout = {
-	8,8,
-	2048,
-	4,
-	{ 0,1,2,3 },
-	{ 20, 16, 28, 24, 4, 0, 12, 8 },
-	{ STEP8(0,4*8) },
-	32*8
-};
-
-static const gfx_layout layout_6bpp_sprite_hi = {
-	16,16,
-	RGN_FRAC(1,1),
-	6,
-	{ STEP2(0,1)/**/,0,0,0,0/**/ },
-	{ STEP4(3*2,-2), STEP4(7*2,-2), STEP4(11*2,-2), STEP4(15*2,-2) },
-	{ STEP16(0,16*2) },
-	16*16*2
-};
-
-static const gfx_layout layout_6bpp_tile_hi = {
-	16,16,
-	RGN_FRAC(1,1),
-	6,
-	{ 8,0/**/,0,0,0,0/**/ },
-	{ STEP8(7,-1), STEP8(8*2+7,-1) },
-	{ STEP16(0,8*2*2) },
-	16*16*2
-};
-
-static GFXDECODE_START( gfx_taito_f3 )
-	GFXDECODE_ENTRY( nullptr,      0, charlayout,             0x0000, 0x0400>>4 ) /* Dynamically modified */
-	GFXDECODE_ENTRY( nullptr,      0, pivotlayout,            0x0000,  0x400>>4 ) /* Dynamically modified */
-	GFXDECODE_ENTRY( "sprites",    0, gfx_16x16x4_packed_lsb, 0x1000, 0x1000>>4 ) // low 4bpp of 6bpp sprite data
-	GFXDECODE_ENTRY( "tilemap",    0, gfx_16x16x4_packed_lsb, 0x0000, 0x2000>>4 ) // low 4bpp of 6bpp tilemap data
-	GFXDECODE_ENTRY( "tilemap_hi", 0, layout_6bpp_tile_hi,    0x0000, 0x2000>>4 ) // hi 2bpp of 6bpp tilemap data
-	GFXDECODE_ENTRY( "sprites_hi", 0, layout_6bpp_sprite_hi,  0x1000, 0x1000>>4 ) // hi 2bpp of 6bpp sprite data
-GFXDECODE_END
-
-/******************************************************************************/
-
 TIMER_CALLBACK_MEMBER(taito_f3_state::trigger_int3)
 {
 	// some signal from video hardware?
@@ -455,7 +404,7 @@ void taito_f3_state::f3(machine_config &config)
 
 	TC0630FDP(config, m_fdp, 26.686_MHz_XTAL / 4);
 	
-	GFXDECODE(config, m_gfxdecode, m_palette, gfx_taito_f3);
+	GFXDECODE(config, m_gfxdecode, m_palette, FDP::gfx_taito_f3);
 	PALETTE(config, m_palette).set_entries(0x2000);
 	
 	m_fdp->set_palette(m_palette);
@@ -492,36 +441,6 @@ void taito_f3_state::f3_224c(machine_config &config)
 	m_screen->set_visarea(46, 40*8-1 + 46, 24, 24+224-1);
 }
 
-static const gfx_layout bubsympb_sprite_layout = {
-	16,16,
-	RGN_FRAC(1,6),
-	6,
-	{ RGN_FRAC(0,6), RGN_FRAC(1,6), RGN_FRAC(2,6), RGN_FRAC(3,6), RGN_FRAC(4,6), RGN_FRAC(5,6) },
-	{ STEP16(15,-1) },
-	{ STEP16(0,16) },
-	16*16
-};
-
-static const gfx_layout bubsympb_layout_5bpp_tile_hi = {
-	16,16,
-	RGN_FRAC(1,1),
-	5,
-	{ 0/**/,0,0,0,0/**/ },
-	{ STEP8(7,-1), STEP8(15,-1) },
-	{ STEP16(0,16) },
-	16*16
-};
-
-
-static GFXDECODE_START( gfx_bubsympb )
-	GFXDECODE_ENTRY( nullptr,      0, charlayout,                   0,  64 ) /* Dynamically modified */
-	GFXDECODE_ENTRY( nullptr,      0, pivotlayout,                  0,  64 ) /* Dynamically modified */
-	GFXDECODE_ENTRY( "sprites",    0, bubsympb_sprite_layout,    4096, 256 ) /* Sprites area (6bpp planar) */
-	GFXDECODE_ENTRY( "tilemap",    0, gfx_16x16x4_packed_lsb,       0, 512 ) // low 4bpp of 5bpp tilemap data
-	GFXDECODE_ENTRY( "tilemap_hi", 0, bubsympb_layout_5bpp_tile_hi, 0, 512 ) // hi 1bpp of 5bpp tilemap data
-	GFXDECODE_ENTRY( "sprites",    0, bubsympb_sprite_layout,    4096, 256 ) // dummy gfx duplicate for avoid crash
-GFXDECODE_END
-
 void taito_f3_state::bubsympb(machine_config &config)
 {
 	/* basic machine hardware */
@@ -542,7 +461,7 @@ void taito_f3_state::bubsympb(machine_config &config)
 	m_screen->set_screen_update(FUNC(taito_f3_state::screen_update));
 	m_screen->screen_vblank().set(FUNC(taito_f3_state::screen_vblank));
 
-	GFXDECODE(config, m_gfxdecode, m_palette, gfx_bubsympb);
+	GFXDECODE(config, m_gfxdecode, m_palette, FDP::gfx_bubsympb);
 	PALETTE(config, m_palette).set_entries(0x2000);
 
 	/* sound hardware */
