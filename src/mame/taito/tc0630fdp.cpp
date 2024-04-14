@@ -6,6 +6,12 @@ DEFINE_DEVICE_TYPE(TC0630FDP, FDP, "tc0630fdp", "Taito TC0630FDP")
 FDP::FDP(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: device_t(mconfig, TC0630FDP, tag, owner, clock)
 	, device_gfx_interface(mconfig, *this, gfxinfo, "palette")
+	, m_spriteram(*this, "spriteram", 0x10000, ENDIANNESS_BIG)
+	, m_pfram(*this, "pfram", 0xc000, ENDIANNESS_BIG)
+	, m_textram(*this, "textram", 0x2000, ENDIANNESS_BIG)
+	, m_charram(*this, "charram", 0x2000, ENDIANNESS_BIG)
+	, m_lineram(*this, "lineram", 0x10000, ENDIANNESS_BIG)
+	, m_pivotram(*this, "pivotram", 0x10000, ENDIANNESS_BIG)
 {
 }
 
@@ -172,4 +178,220 @@ void FDP::tile_decode()
 		pf_gfx->set_raw_layout(m_decoded_gfx4.get(), pf_gfx->width(), pf_gfx->height(), pf_gfx->elements(), 8 * pf_gfx->width(), 8 * pf_gfx->width() * pf_gfx->height());
 		set_gfx(4, nullptr);
 	}
+}
+
+void FDP::map_ram(address_map &map) {
+	map(0x00000, 0x0ffff).rw(FUNC(FDP::spriteram_r), FUNC(FDP::spriteram_w));
+	map(0x10000, 0x1bfff).rw(FUNC(FDP::pfram_r), FUNC(FDP::pfram_w));
+	map(0x1c000, 0x1dfff).rw(FUNC(FDP::textram_r), FUNC(FDP::textram_w));
+	map(0x1e000, 0x1ffff).rw(FUNC(FDP::charram_r), FUNC(FDP::charram_w));
+	map(0x20000, 0x2ffff).rw(FUNC(FDP::lineram_r), FUNC(FDP::lineram_w));
+	map(0x30000, 0x3ffff).rw(FUNC(FDP::pivotram_r), FUNC(FDP::pivotram_w));
+}
+
+u16 FDP::spriteram_r(offs_t offset)
+{
+	return m_spriteram[offset];
+}
+
+void FDP::spriteram_w(offs_t offset, u16 data, u16 mem_mask)
+{
+	COMBINE_DATA(&m_spriteram[offset]);
+}
+
+u16 FDP::pfram_r(offs_t offset)
+{
+	return m_pfram[offset];
+}
+
+void FDP::pfram_w(offs_t offset, u16 data, u16 mem_mask)
+{
+	COMBINE_DATA(&m_pfram[offset]);
+
+	if (m_game_config->extend) {
+		if (offset < 0x4000) {
+			m_tilemap[offset >> 12]->mark_tile_dirty((offset & 0xfff) >> 1);
+		}
+	} else {
+		if (offset < 0x4000)
+			m_tilemap[offset >> 11]->mark_tile_dirty((offset & 0x7ff) >> 1);
+	}
+}
+
+u16 FDP::textram_r(offs_t offset)
+{
+	return m_textram[offset];
+}
+
+void FDP::textram_w(offs_t offset, u16 data, u16 mem_mask)
+{
+	COMBINE_DATA(&m_textram[offset]);
+
+	m_vram_layer->mark_tile_dirty(offset);
+
+	// dirty the pixel layer too, since it uses palette etc. from text layer
+	// convert the position (x and y are swapped, and the upper bit of y is ignored)
+	//  text: [Yyyyyyxxxxxx]
+	// pixel: [0xxxxxxyyyyy]
+	const int y = BIT(offset, 6, 5);
+	const int x = BIT(offset, 0, 6);
+	const int col_off = x << 5 | y;
+
+	m_pixel_layer->mark_tile_dirty(col_off);
+}
+
+u16 FDP::charram_r(offs_t offset)
+{
+	return m_charram[offset];
+}
+
+void FDP::charram_w(offs_t offset, u16 data, u16 mem_mask)
+{
+	COMBINE_DATA(&m_charram[offset]);
+	gfx(0)->mark_dirty(offset >> 4);
+}
+
+u16 FDP::lineram_r(offs_t offset)
+{
+	return m_lineram[offset];
+}
+
+void FDP::lineram_w(offs_t offset, u16 data, u16 mem_mask)
+{
+	COMBINE_DATA(&m_lineram[offset]);
+}
+
+u16 FDP::pivotram_r(offs_t offset)
+{
+	return m_pivotram[offset];
+}
+
+void FDP::pivotram_w(offs_t offset, u16 data, u16 mem_mask)
+{
+	COMBINE_DATA(&m_pivotram[offset]);
+	gfx(1)->mark_dirty(offset >> 4);
+}
+
+void FDP::create_tilemaps(bool extend)
+{
+	m_extend = extend;
+	// TODO: we need to free these if this is called multiple times
+	if (m_extend) {
+		m_tilemap[0] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<0>)), TILEMAP_SCAN_ROWS, 16, 16, 64, 32);
+		m_tilemap[1] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<1>)), TILEMAP_SCAN_ROWS, 16, 16, 64, 32);
+		m_tilemap[2] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<2>)), TILEMAP_SCAN_ROWS, 16, 16, 64, 32);
+		m_tilemap[3] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<3>)), TILEMAP_SCAN_ROWS, 16, 16, 64, 32);
+		m_tilemap[4] = m_tilemap[5] = m_tilemap[6] = m_tilemap[7] = nullptr;
+	} else {
+		m_tilemap[0] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<0>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
+		m_tilemap[1] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<1>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
+		m_tilemap[2] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<2>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
+		m_tilemap[3] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<3>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
+		m_tilemap[4] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<4>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
+		m_tilemap[5] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<5>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
+		m_tilemap[6] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<6>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
+		m_tilemap[7] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<7>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
+	}
+	for (int i = 0; i < 8; i++) {
+		if (m_tilemap[i])
+			m_tilemap[i]->set_transparent_pen(0);
+	}
+
+	if (m_extend) {
+		m_width_mask = 0x3ff; // 10 bits
+		for (int i = 0; i < 4; i++)
+			m_pf_data[i] = &m_pf_ram[(0x2000 * i) / 2];
+	} else {
+		m_width_mask = 0x1ff; // 9 bits
+		for (int i = 0; i < 8; i++)
+			m_pf_data[i] = &m_pf_ram[(0x1000 * i) / 2];
+	}
+	
+	m_vram_layer = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info_text)), TILEMAP_SCAN_ROWS, 8, 8, 64, 64);
+	m_pixel_layer = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info_pixel)), TILEMAP_SCAN_COLS, 8, 8, 64, 32);
+	m_vram_layer->set_transparent_pen(0);
+	m_pixel_layer->set_transparent_pen(0);
+	
+	gfx(0)->set_source(reinterpret_cast<u8 *>(m_charram.target()));
+	gfx(1)->set_source(reinterpret_cast<u8 *>(m_pivotram.target()));
+}
+
+template<unsigned Layer>
+TILE_GET_INFO_MEMBER(FDP::get_tile_info)
+{
+	u16 *tilep = &m_pf_data[Layer][tile_index * 2];
+	// tile info:
+	// [yx?? ddac cccc cccc]
+	// yx: x/y flip
+	// ?: upper bits of tile number?
+	// d: bpp
+	// a: blend select
+	// c: color
+
+	const u16 palette_code = BIT(tilep[0],  0, 9);
+	const u8 blend_sel     = BIT(tilep[0],  9, 1);
+	const u8 extra_planes  = BIT(tilep[0], 10, 2); // 0 = 4bpp, 1 = 5bpp, 2 = unused?, 3 = 6bpp
+
+	tileinfo.set(3,
+			tilep[1],
+			palette_code,
+			TILE_FLIPYX(BIT(tilep[0], 14, 2)));
+
+	tileinfo.category = blend_sel; // blend value select
+	// gfx extra planes and palette code set the same bits of color address
+	// we need to account for tilemap.h combining using "+" instead of "|"
+	tileinfo.pen_mask = ((extra_planes & ~palette_code) << 4) | 0x0f;
+}
+
+
+TILE_GET_INFO_MEMBER(FDP::get_tile_info_text)
+{
+	const u16 vram_tile = m_textram[tile_index];
+	// text tile info:
+	// [yccc cccx tttt tttt]
+	// y: y flip
+	// c: palette
+	// x: x flip
+	// t: tile number
+
+	u8 flags = 0;
+	if (BIT(vram_tile,  8)) flags |= TILE_FLIPX;
+	if (BIT(vram_tile, 15)) flags |= TILE_FLIPY;
+
+	tileinfo.set(0,
+			vram_tile & 0xff,
+			BIT(vram_tile, 9, 6),
+			flags);
+}
+
+TILE_GET_INFO_MEMBER(FDP::get_tile_info_pixel)
+{
+	/* attributes are shared with VRAM layer */
+	// convert the index:
+	// pixel: [0xxxxxxyyyyy]
+	//  text: [?yyyyyxxxxxx]
+	const int x = BIT(tile_index, 5, 6);
+	int y = BIT(tile_index, 0, 5);
+	// HACK: [legacy implementation of scroll offset check for pixel palette mirroring]
+	// the pixel layer is 256px high, but uses the palette from the text layer which is twice as long
+	// so normally it only uses the first half of textram, BUT if you scroll down, you get
+	//   an alternate version of the pixel layer which gets its palette data from the second half of textram.
+	// we simulate this using a hack, checking scroll offset to determine which version of the pixel layer is visible.
+	// this means we SHOULD dirty parts of the pixel layer, if the scroll or flipscreen changes.. but we don't.
+	// (really we should just apply the palette during rendering instead of this ?)
+	int y_offs = y * 8 + m_control_1[5];
+	if (m_flipscreen)
+		y_offs += 0x100; // this could just as easily be ^= 0x100 or -= 0x100
+	if ((y_offs & 0x1ff) >= 256)
+		y += 32;
+
+	const u16 vram_tile = m_textram[y << 6 | x];
+
+	const int tile = tile_index;
+	const u8 palette = BIT(vram_tile, 9, 6);
+	u8 flags = 0;
+	if (BIT(vram_tile, 8))  flags |= TILE_FLIPX;
+	if (BIT(vram_tile, 15)) flags |= TILE_FLIPY;
+
+	tileinfo.set(1, tile, palette, flags);
 }

@@ -25,12 +25,6 @@ public:
 		m_screen(*this, "screen"),
 		m_palette(*this, "palette"),
 		m_eeprom(*this, "eeprom"),
-		m_spriteram(*this, "spriteram", 0x10000, ENDIANNESS_BIG),
-		m_pf_ram(*this, "pf_ram", 0xc000, ENDIANNESS_BIG),
-		m_textram(*this, "textram", 0x2000, ENDIANNESS_BIG),
-		m_charram(*this, "charram", 0x2000, ENDIANNESS_BIG),
-		m_line_ram(*this, "line_ram", 0x10000, ENDIANNESS_BIG),
-		m_pivot_ram(*this, "pivot_ram", 0x10000, ENDIANNESS_BIG),
 		m_input(*this, "IN.%u", 0),
 		m_dial(*this, "DIAL.%u", 0),
 		m_eepromin(*this, "EEPROMIN"),
@@ -167,12 +161,6 @@ protected:
 	required_device<palette_device> m_palette;
 	optional_device<eeprom_serial_base_device> m_eeprom;
 
-	memory_share_creator<u16> m_spriteram;
-	memory_share_creator<u16> m_pf_ram;
-	memory_share_creator<u16> m_textram;
-	memory_share_creator<u16> m_charram;
-	memory_share_creator<u16> m_line_ram;
-	memory_share_creator<u16> m_pivot_ram;
 	u16 m_control_0[8]{};
 	u16 m_control_1[8]{};
 
@@ -355,11 +343,7 @@ protected:
 	};
 
 	int m_game = 0;
-	tilemap_t *m_tilemap[8] = {nullptr};
-	tilemap_t *m_pixel_layer = nullptr;
-	tilemap_t *m_vram_layer = nullptr;
-	bool m_flipscreen = false;
-	bool m_extend = false;
+
 	u8 m_sprite_extra_planes = 0;
 	u8 m_sprite_pen_mask = 0;
 	bool m_sprite_trails = false;
@@ -377,31 +361,14 @@ protected:
 	//f3_line_inf m_line_inf;
 	const F3config *m_game_config = nullptr;
 
-	u16 spriteram_r(offs_t offset);
-	void spriteram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 pf_ram_r(offs_t offset);
-	void pf_ram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 textram_r(offs_t offset);
-	void textram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 charram_r(offs_t offset);
-	void charram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 lineram_r(offs_t offset);
-	void lineram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 pivot_r(offs_t offset);
-	void pivot_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 	void control_0_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 	void control_1_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 
-	template<unsigned Layer> TILE_GET_INFO_MEMBER(get_tile_info);
-	TILE_GET_INFO_MEMBER(get_tile_info_text);
-	TILE_GET_INFO_MEMBER(get_tile_info_pixel);
 	u32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	void screen_vblank(int state);
 
 	void bubsympb_map(address_map &map);
 	void f3_map(address_map &map);
-
-	void create_tilemaps(bool extend);
 
 	inline void f3_drawgfx(const tempsprite &sprite, const rectangle &cliprect);
 	void get_sprite_info();

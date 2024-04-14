@@ -359,128 +359,10 @@ void taito_f3_state::device_post_load()
 
 /******************************************************************************/
 
-template<unsigned Layer>
-TILE_GET_INFO_MEMBER(taito_f3_state::get_tile_info)
-{
-	u16 *tilep = &m_pf_data[Layer][tile_index * 2];
-	// tile info:
-	// [yx?? ddac cccc cccc]
-	// yx: x/y flip
-	// ?: upper bits of tile number?
-	// d: bpp
-	// a: blend select
-	// c: color
-
-	const u16 palette_code = BIT(tilep[0],  0, 9);
-	const u8 blend_sel     = BIT(tilep[0],  9, 1);
-	const u8 extra_planes  = BIT(tilep[0], 10, 2); // 0 = 4bpp, 1 = 5bpp, 2 = unused?, 3 = 6bpp
-
-	tileinfo.set(3,
-			tilep[1],
-			palette_code,
-			TILE_FLIPYX(BIT(tilep[0], 14, 2)));
-
-	tileinfo.category = blend_sel; // blend value select
-	// gfx extra planes and palette code set the same bits of color address
-	// we need to account for tilemap.h combining using "+" instead of "|"
-	tileinfo.pen_mask = ((extra_planes & ~palette_code) << 4) | 0x0f;
-}
-
-
-TILE_GET_INFO_MEMBER(taito_f3_state::get_tile_info_text)
-{
-	const u16 vram_tile = m_textram[tile_index];
-	// text tile info:
-	// [yccc cccx tttt tttt]
-	// y: y flip
-	// c: palette
-	// x: x flip
-	// t: tile number
-
-	u8 flags = 0;
-	if (BIT(vram_tile,  8)) flags |= TILE_FLIPX;
-	if (BIT(vram_tile, 15)) flags |= TILE_FLIPY;
-
-	tileinfo.set(0,
-			vram_tile & 0xff,
-			BIT(vram_tile, 9, 6),
-			flags);
-}
-
-TILE_GET_INFO_MEMBER(taito_f3_state::get_tile_info_pixel)
-{
-	/* attributes are shared with VRAM layer */
-	// convert the index:
-	// pixel: [0xxxxxxyyyyy]
-	//  text: [?yyyyyxxxxxx]
-	const int x = BIT(tile_index, 5, 6);
-	int y = BIT(tile_index, 0, 5);
-	// HACK: [legacy implementation of scroll offset check for pixel palette mirroring]
-	// the pixel layer is 256px high, but uses the palette from the text layer which is twice as long
-	// so normally it only uses the first half of textram, BUT if you scroll down, you get
-	//   an alternate version of the pixel layer which gets its palette data from the second half of textram.
-	// we simulate this using a hack, checking scroll offset to determine which version of the pixel layer is visible.
-	// this means we SHOULD dirty parts of the pixel layer, if the scroll or flipscreen changes.. but we don't.
-	// (really we should just apply the palette during rendering instead of this ?)
-	int y_offs = y * 8 + m_control_1[5];
-	if (m_flipscreen)
-		y_offs += 0x100; // this could just as easily be ^= 0x100 or -= 0x100
-	if ((y_offs & 0x1ff) >= 256)
-		y += 32;
-
-	const u16 vram_tile = m_textram[y << 6 | x];
-
-	const int tile = tile_index;
-	const u8 palette = BIT(vram_tile, 9, 6);
-	u8 flags = 0;
-	if (BIT(vram_tile, 8))  flags |= TILE_FLIPX;
-	if (BIT(vram_tile, 15)) flags |= TILE_FLIPY;
-
-	tileinfo.set(1, tile, palette, flags);
-}
-
-/******************************************************************************/
-
 void taito_f3_state::screen_vblank(int state)
 {
 	if (state) {
 		//get_sprite_info();
-	}
-}
-
-void taito_f3_state::create_tilemaps(bool extend)
-{
-	m_extend = extend;
-	// TODO: we need to free these if this is called multiple times
-	if (m_extend) {
-		m_tilemap[0] = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<0>)), TILEMAP_SCAN_ROWS, 16, 16, 64, 32);
-		m_tilemap[1] = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<1>)), TILEMAP_SCAN_ROWS, 16, 16, 64, 32);
-		m_tilemap[2] = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<2>)), TILEMAP_SCAN_ROWS, 16, 16, 64, 32);
-		m_tilemap[3] = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<3>)), TILEMAP_SCAN_ROWS, 16, 16, 64, 32);
-		m_tilemap[4] = m_tilemap[5] = m_tilemap[6] = m_tilemap[7] = nullptr;
-	} else {
-		m_tilemap[0] = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<0>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
-		m_tilemap[1] = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<1>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
-		m_tilemap[2] = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<2>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
-		m_tilemap[3] = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<3>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
-		m_tilemap[4] = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<4>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
-		m_tilemap[5] = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<5>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
-		m_tilemap[6] = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<6>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
-		m_tilemap[7] = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info<7>)), TILEMAP_SCAN_ROWS, 16, 16, 32, 32);
-	}
-	for (int i = 0; i < 8; i++) {
-		if (m_tilemap[i])
-			m_tilemap[i]->set_transparent_pen(0);
-	}
-
-	if (m_extend) {
-		m_width_mask = 0x3ff; // 10 bits
-		for (int i = 0; i < 4; i++)
-			m_pf_data[i] = &m_pf_ram[(0x2000 * i) / 2];
-	} else {
-		m_width_mask = 0x1ff; // 9 bits
-		for (int i = 0; i < 8; i++)
-			m_pf_data[i] = &m_pf_ram[(0x1000 * i) / 2];
 	}
 }
 
@@ -500,59 +382,32 @@ void taito_f3_state::video_start()
 
 	m_game_config = pCFG;
 
-	create_tilemaps(m_game_config->extend);
+	m_fdp->create_tilemaps(m_game_config->extend);
 
 	m_spritelist = std::make_unique<tempsprite[]>(0x400);
 	m_sprite_end = &m_spritelist[0];
-	m_vram_layer = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info_text)), TILEMAP_SCAN_ROWS, 8, 8, 64, 64);
-	m_pixel_layer = &machine().tilemap().create(*m_fdp, tilemap_get_info_delegate(*this, FUNC(taito_f3_state::get_tile_info_pixel)), TILEMAP_SCAN_COLS, 8, 8, 64, 32);
 
 	m_screen->register_screen_bitmap(m_pri_alp_bitmap);
 	for (auto &sp_bitmap : m_sprite_framebuffers) {
 		m_screen->register_screen_bitmap(sp_bitmap);
 	}
-
-	m_vram_layer->set_transparent_pen(0);
-	m_pixel_layer->set_transparent_pen(0);
-
+	
 	// Palettes have 4 bpp indexes despite up to 6 bpp data. The unused top bits in the gfx data are cleared later.
 	m_fdp->gfx(2)->set_granularity(16);
 	m_fdp->gfx(3)->set_granularity(16);
 
-	m_flipscreen = false;
+	m_fdp->m_flipscreen = false;
 	m_sprite_bank = false;
 	m_sprite_trails = false;
-	memset(&m_spriteram[0], 0, 0x10000);
+	memset(&m_fdp->m_spriteram[0], 0, 0x10000);
 
 	save_item(NAME(m_control_0));
 	save_item(NAME(m_control_1));
-
-	m_fdp->gfx(0)->set_source(reinterpret_cast<u8 *>(m_charram.target()));
-	m_fdp->gfx(1)->set_source(reinterpret_cast<u8 *>(m_pivot_ram.target()));
 
 	m_sprite_lag = m_game_config->sprite_lag;
 }
 
 /******************************************************************************/
-
-u16 taito_f3_state::pf_ram_r(offs_t offset)
-{
-	return m_pf_ram[offset];
-}
-
-void taito_f3_state::pf_ram_w(offs_t offset, u16 data, u16 mem_mask)
-{
-	COMBINE_DATA(&m_pf_ram[offset]);
-
-	if (m_game_config->extend) {
-		if (offset < 0x4000) {
-			m_tilemap[offset >> 12]->mark_tile_dirty((offset & 0xfff) >> 1);
-		}
-	} else {
-		if (offset < 0x4000)
-			m_tilemap[offset >> 11]->mark_tile_dirty((offset & 0x7ff) >> 1);
-	}
-}
 
 void taito_f3_state::control_0_w(offs_t offset, u16 data, u16 mem_mask)
 {
@@ -562,70 +417,6 @@ void taito_f3_state::control_0_w(offs_t offset, u16 data, u16 mem_mask)
 void taito_f3_state::control_1_w(offs_t offset, u16 data, u16 mem_mask)
 {
 	COMBINE_DATA(&m_control_1[offset]);
-}
-
-u16 taito_f3_state::spriteram_r(offs_t offset)
-{
-	return m_spriteram[offset];
-}
-
-void taito_f3_state::spriteram_w(offs_t offset, u16 data, u16 mem_mask)
-{
-	COMBINE_DATA(&m_spriteram[offset]);
-}
-
-u16 taito_f3_state::textram_r(offs_t offset)
-{
-	return m_textram[offset];
-}
-
-void taito_f3_state::textram_w(offs_t offset, u16 data, u16 mem_mask)
-{
-	COMBINE_DATA(&m_textram[offset]);
-
-	m_vram_layer->mark_tile_dirty(offset);
-
-	// dirty the pixel layer too, since it uses palette etc. from text layer
-	// convert the position (x and y are swapped, and the upper bit of y is ignored)
-	//  text: [Yyyyyyxxxxxx]
-	// pixel: [0xxxxxxyyyyy]
-	const int y = BIT(offset, 6, 5);
-	const int x = BIT(offset, 0, 6);
-	const int col_off = x << 5 | y;
-
-	m_pixel_layer->mark_tile_dirty(col_off);
-}
-
-u16 taito_f3_state::charram_r(offs_t offset)
-{
-	return m_charram[offset];
-}
-
-void taito_f3_state::charram_w(offs_t offset, u16 data, u16 mem_mask)
-{
-	COMBINE_DATA(&m_charram[offset]);
-	m_fdp->gfx(0)->mark_dirty(offset >> 4);
-}
-
-u16 taito_f3_state::pivot_r(offs_t offset)
-{
-	return m_pivot_ram[offset];
-}
-
-void taito_f3_state::pivot_w(offs_t offset, u16 data, u16 mem_mask)
-{
-	COMBINE_DATA(&m_pivot_ram[offset]);
-	m_fdp->gfx(1)->mark_dirty(offset >> 4);
-}
-
-u16 taito_f3_state::lineram_r(offs_t offset)
-{
-	return m_line_ram[offset];
-}
-
-void taito_f3_state::lineram_w(offs_t offset, u16 data, u16 mem_mask)
-{
-	COMBINE_DATA(&m_line_ram[offset]);
 }
 
 void taito_f3_state::palette_24bit_w(offs_t offset, u32 data, u32 mem_mask)
@@ -652,7 +443,7 @@ void taito_f3_state::palette_24bit_w(offs_t offset, u32 data, u32 mem_mask)
 // y should be called 0->255 for non-flipscreen, 255->0 for flipscreen
 void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 {
-	const auto &line_ram = m_line_ram;
+	const auto &line_ram = m_fdp->m_lineram;
 	const auto latched_addr = [line_ram, y] (u8 section, u8 subsection) -> offs_t {
 		const u16 latches = line_ram[(section * 0x200)/2 + y];
 		// NOTE: this may actually be computed from the upper byte? i.e.:
@@ -667,7 +458,7 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 	// 4000 **********************************
 	for (const int i : { 2, 3 }) {
 		if (const offs_t where = latched_addr(0, i)) {
-			const u16 colscroll = m_line_ram[where];
+			const u16 colscroll = line_ram[where];
 			line.pf[i].colscroll   = colscroll & 0x1ff;
 			line.pf[i].alt_tilemap = colscroll & 0x200;
 			line.clip[2*(i-2) + 0].set_upper(BIT(colscroll, 12), BIT(colscroll, 13));
@@ -679,7 +470,7 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 	// renderer needs to adjust clip by -48
 	for (const int i : { 0, 1, 2, 3 }) {
 		if (const offs_t where = latched_addr(1, i)) {
-			const u16 clip_lows = m_line_ram[where];
+			const u16 clip_lows = line_ram[where];
 			line.clip[i].set_lower(BIT(clip_lows, 0, 8), BIT(clip_lows, 8, 8));
 		}
 	}
@@ -687,7 +478,7 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 	// 6000 **********************************
 	if (const offs_t where = latched_addr(2, 0)) { // sprite blend modes, pivot blend select, ?
 		// old code called first value "sync register", is special handling necessary?
-		const u16 line_6000 = m_line_ram[where];
+		const u16 line_6000 = line_ram[where];
 
 		line.pivot.blend_select_v = BIT(line_6000, 9);
 		line.pivot.pivot_control = BIT(line_6000, 8, 8);
@@ -703,14 +494,14 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 		}
 	}
 	if (const offs_t where = latched_addr(2, 1)) { // blend values
-		const u16 blend_vals = m_line_ram[where];
+		const u16 blend_vals = line_ram[where];
 		for (int idx = 0; idx < 4; idx++) {
 			const u8 alpha = BIT(blend_vals, 4 * idx, 4);
 			line.blend[idx] = std::min(255, (0xf - alpha) * 32);
 		}
 	}
 	if (const offs_t where = latched_addr(2, 2)) { // mosaic, palette depth effects
-		const u16 x_mosaic = m_line_ram[where];
+		const u16 x_mosaic = line_ram[where];
 
 		line.x_sample = 16 - BIT(x_mosaic, 4, 4);
 
@@ -731,7 +522,7 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 		}
 	}
 	if (const offs_t where = latched_addr(2, 3)) { // bg palette? [unimplemented]
-		line.bg_palette = m_line_ram[where];
+		line.bg_palette = line_ram[where];
 		if (TAITOF3_VIDEO_DEBUG == 1) {
 			// gunlock: 0000
 			if (line.bg_palette) // check if unknown effect bits set
@@ -741,7 +532,7 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 
 	// 7000 **********************************
 	if (const offs_t where = latched_addr(3, 0)) { // ? [unimplemented]
-		const u16 line_7000 = m_line_ram[where];
+		const u16 line_7000 = line_ram[where];
 		line.pivot.pivot_enable = line_7000;
 		if (TAITOF3_VIDEO_DEBUG == 1) {
 			// ridingf/commandw/trstar: c000, gunlock: 0000, recalh: 4000, quizhuhu: 00ff
@@ -751,10 +542,10 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 		}
 	}
 	if (const offs_t where = latched_addr(3, 1)) { // pivot layer mix info word
-		line.pivot.set_mix(m_line_ram[where]);
+		line.pivot.set_mix(line_ram[where]);
 	}
 	if (const offs_t where = latched_addr(3, 2)) { // sprite clip info, blend select
-		const u16 sprite_mix = m_line_ram[where];
+		const u16 sprite_mix = line_ram[where];
 
 		if (TAITOF3_VIDEO_DEBUG == 1) {
 			// many: _8__, exceptions: pbobble3/puchicar/pbobble4/gunlock
@@ -770,7 +561,7 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 		}
 	}
 	if (const offs_t where = latched_addr(3, 3)) { // sprite priority
-		const u16 sprite_prio = m_line_ram[where];
+		const u16 sprite_prio = line_ram[where];
 		for (int group = 0; group < NUM_SPRITEGROUPS; group++) {
 			line.sp[group].set_prio(BIT(sprite_prio, group * 4, 4));
 		}
@@ -779,7 +570,7 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 	// 8000 **********************************
 	for (const int i : { 0, 1, 2, 3 }) { // playfield zoom
 		if (const offs_t where = latched_addr(4, i)) {
-			const u16 pf_scale = m_line_ram[where];
+			const u16 pf_scale = line_ram[where];
 			// y zooms are interleaved
 			const int FIX_Y[] = { 0, 3, 2, 1 };
 			line.pf[i].x_scale = 256 - BIT(pf_scale, 8, 8);
@@ -790,7 +581,7 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 	// 9000 **********************************
 	for (const int i : { 0, 1, 2, 3 }) { // playfield palette addition
 		if (const offs_t where = latched_addr(5, i)) {
-			const u16 pf_pal_add = m_line_ram[where];
+			const u16 pf_pal_add = line_ram[where];
 			line.pf[i].pal_add = pf_pal_add * 16;
 		}
 	}
@@ -801,7 +592,7 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 	// and then we just subtract (1<<8) to get almost the same value..
 	for (const int i : { 0, 1, 2, 3 }) { // playfield rowscroll
 		if (const offs_t where = latched_addr(6, i)) {
-			const fixed8 rowscroll = m_line_ram[where] << (8-6);
+			const fixed8 rowscroll = line_ram[where] << (8-6);
 			line.pf[i].rowscroll = (rowscroll & 0xffffff00) - (rowscroll & 0x000000ff);
 			// ((i ^ 0b111111) - 0b111111) << (8-6);
 		}
@@ -810,7 +601,7 @@ void taito_f3_state::read_line_ram(f3_line_inf &line, int y)
 	// B000 **********************************
 	for (const int i : { 0, 1, 2, 3 }) { // playfield mix info
 		if (const offs_t where = latched_addr(7, i)) {
-			line.pf[i].set_mix(m_line_ram[where]);
+			line.pf[i].set_mix(line_ram[where]);
 		}
 	}
 }
@@ -829,7 +620,7 @@ void taito_f3_state::get_pf_scroll(int pf_num, fixed8 &reg_sx, fixed8 &reg_sy)
 	// why don't we need to do the 24 adjustment for pf 1 and 2 ?
 	sy_raw += (1 << 7); // 9.7
 
-	if (m_flipscreen) {
+	if (m_fdp->m_flipscreen) {
 		sx_raw += 320 << 6; // 10.6
 		sx_raw += (512 + 192) << 6; // 10.6
 
@@ -841,7 +632,7 @@ void taito_f3_state::get_pf_scroll(int pf_num, fixed8 &reg_sx, fixed8 &reg_sy)
 	fixed8 sx = sx_raw << (8-6); // 10.6 to 24.8
 	fixed8 sy = sy_raw << (8-7); // 9.7 to 24.8
 	sx ^= 0b1111'1100;
-	if (m_flipscreen) {
+	if (m_fdp->m_flipscreen) {
 		sx = sx - (H_START << 8);
 		sy = -sy;
 	} else {
@@ -1065,7 +856,7 @@ void taito_f3_state::scanline_draw(bitmap_rgb32 &bitmap, const rectangle &clipre
 		line_data.pf[pf].width_mask = m_width_mask;
 		line_data.pf[pf].debug_index = pf;
 	}
-	if (m_flipscreen) {
+	if (m_fdp->m_flipscreen) {
 		line_data.pivot.reg_sx = m_control_1[4] - 12;
 		line_data.pivot.reg_sy = m_control_1[5];
 	} else {
@@ -1074,7 +865,7 @@ void taito_f3_state::scanline_draw(bitmap_rgb32 &bitmap, const rectangle &clipre
 	}
 
 	for (int screen_y = 0; screen_y != 256; screen_y += 1) {
-		const int y = m_flipscreen ? 255 - screen_y : screen_y;
+		const int y = m_fdp->m_flipscreen ? 255 - screen_y : screen_y;
 		read_line_ram(line_data, y);
 		line_data.y = screen_y;
 
@@ -1082,17 +873,17 @@ void taito_f3_state::scanline_draw(bitmap_rgb32 &bitmap, const rectangle &clipre
 		for (int pf_num = 0; pf_num < NUM_PLAYFIELDS; ++pf_num) {
 			auto &pf = line_data.pf[pf_num];
 			int tmap_number = pf_num;
-			if (!m_extend && pf.alt_tilemap)
+			if (!m_fdp->m_extend && pf.alt_tilemap)
 				tmap_number += 2;
-			new (&pf.bitmap) draw_source(m_tilemap[tmap_number]);
+			new (&pf.bitmap) draw_source(m_fdp->m_tilemap[tmap_number]);
 			// what is with this calculation...
 			pf.reg_fx_x = pf.reg_sx + pf.rowscroll;
 			pf.reg_fx_x += 10 * ((pf.x_scale) - (1<<8));
 		}
 		if (line_data.pivot.use_pix()) {
-			new (&line_data.pivot.bitmap) draw_source(m_pixel_layer);
+			new (&line_data.pivot.bitmap) draw_source(m_fdp->m_pixel_layer);
 		} else {
-			new (&line_data.pivot.bitmap) draw_source(m_vram_layer);
+			new (&line_data.pivot.bitmap) draw_source(m_fdp->m_vram_layer);
 		}
 
 		mix_pix line_buf[H_TOTAL]{};
@@ -1162,7 +953,7 @@ inline void taito_f3_state::f3_drawgfx(const tempsprite &sprite, const rectangle
 	const u8 flipy = sprite.flip_y ? 0xF : 0;
 
 	fixed8 dy8 = (sprite.y);
-	if (!m_flipscreen)
+	if (!m_fdp->m_flipscreen)
 		dy8 += 255; // round up in non-flipscreen mode?
 	// maybe flipscreen coordinate adjustments should be done after all this math, during final rendering?
 	// y scaling testcases: elvactr mission # text (!flip), kaiserknj attract text (flip)
@@ -1198,7 +989,7 @@ inline void taito_f3_state::f3_drawgfx(const tempsprite &sprite, const rectangle
 
 void taito_f3_state::get_sprite_info()
 {
-	const u16 *spriteram16_ptr = m_spriteram.target();
+	const u16 *spriteram16_ptr = m_fdp->m_spriteram.target();
 
 	struct sprite_axis {
 		fixed8 block_scale = 1 << 8;
@@ -1253,7 +1044,7 @@ void taito_f3_state::get_sprite_info()
 		// Check if special command bit is set
 		if (BIT(spr[3], 15)) {
 			const u16 cntrl = spr[5];
-			m_flipscreen = BIT(cntrl, 13);
+			m_fdp->m_flipscreen = BIT(cntrl, 13);
 
 			/*
 			    ??f? ??dd ???? ??tb
@@ -1315,8 +1106,8 @@ void taito_f3_state::get_sprite_info()
 		if (!tile)
 			continue; // todo: is this the correct way to tell if a sprite exists?
 
-		const fixed8 tx = m_flipscreen ? (512<<8) - x.block_scale*16 - x.pos : x.pos;
-		const fixed8 ty = m_flipscreen ? (256<<8) - y.block_scale*16 - y.pos : y.pos;
+		const fixed8 tx = m_fdp->m_flipscreen ? (512<<8) - x.block_scale*16 - x.pos : x.pos;
+		const fixed8 ty = m_fdp->m_flipscreen ? (256<<8) - y.block_scale*16 - y.pos : y.pos;
 
 		if (tx + x.block_scale*16 <= visarea.min_x<<8 || tx > visarea.max_x<<8 || ty + y.block_scale*16 <= visarea.min_y<<8 || ty > visarea.max_y<<8)
 			continue;
@@ -1326,8 +1117,8 @@ void taito_f3_state::get_sprite_info()
 
 		sprite_ptr->x = tx;
 		sprite_ptr->y = ty;
-		sprite_ptr->flip_x = m_flipscreen ? !flip_x : flip_x;
-		sprite_ptr->flip_y = m_flipscreen ? !flip_y : flip_y;
+		sprite_ptr->flip_x = m_fdp->m_flipscreen ? !flip_x : flip_x;
+		sprite_ptr->flip_y = m_fdp->m_flipscreen ? !flip_y : flip_y;
 		sprite_ptr->code = tile;
 		sprite_ptr->color = color;
 		sprite_ptr->scale_x = x.block_scale;
@@ -1357,7 +1148,7 @@ void taito_f3_state::draw_sprites(const rectangle &cliprect)
 /******************************************************************************/
 u32 taito_f3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	machine().tilemap().set_flip_all(m_flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
+	machine().tilemap().set_flip_all(m_fdp->m_flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
 	bitmap.fill(0, cliprect);
 
