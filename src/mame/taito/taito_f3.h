@@ -417,7 +417,7 @@ protected:
 	template<typename Mix>
 	std::vector<clip_plane_inf> calc_clip(const clip_plane_inf (&clip)[NUM_CLIPPLANES], const Mix line);
 	template<typename Mix>
-	bool mix_line(const Mix *gfx, mix_pix &z, pri_mode &pri, const f3_line_inf &line, const clip_plane_inf &range);
+	bool mix_line(const Mix &gfx, mix_pix &z, pri_mode &pri, const f3_line_inf &line, const clip_plane_inf &range);
 
 
 private:

@@ -954,7 +954,7 @@ inline int taito_f3_state::pivot_inf::y_index(int y) const
 }
 
 template<typename Mix>
-bool taito_f3_state::mix_line(const Mix *gfx, mix_pix &z, pri_mode &pri, const f3_line_inf &line, const clip_plane_inf &range)
+bool taito_f3_state::mix_line(const Mix &gfx, mix_pix &z, pri_mode &pri, const f3_line_inf &line, const clip_plane_inf &range)
 {
 	const int y = gfx->y_index(line.y);
 	const u16 *src = &gfx->bitmap.src->pix(y);
