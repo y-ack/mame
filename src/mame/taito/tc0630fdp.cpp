@@ -5,12 +5,12 @@ DEFINE_DEVICE_TYPE(TC0630FDP, FDP, "tc0630fdp", "Taito TC0630FDP")
 
 FDP::FDP(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: device_t(mconfig, TC0630FDP, tag, owner, clock)
-	, device_gfx_interface(mconfig, *this)
+	, device_gfx_interface(mconfig, *this, gfxinfo, "palette")
 {
 }
 
 void FDP::device_start() {
-	
+	//decode_gfx(gfxinfo);
 }
 
 /******************************************************************************/
@@ -55,13 +55,13 @@ static const gfx_layout layout_6bpp_tile_hi = {
 	16*16*2
 };
 
-GFXDECODE_MEMBER( FDP::gfx_taito_f3 )
-	GFXDECODE_ENTRY( nullptr,      0, charlayout,             0x0000, 0x0400>>4 ) /* Dynamically modified */
-	GFXDECODE_ENTRY( nullptr,      0, pivotlayout,            0x0000,  0x400>>4 ) /* Dynamically modified */
-	GFXDECODE_ENTRY( "sprites",    0, gfx_16x16x4_packed_lsb, 0x1000, 0x1000>>4 ) // low 4bpp of 6bpp sprite data
-	GFXDECODE_ENTRY( "tilemap",    0, gfx_16x16x4_packed_lsb, 0x0000, 0x2000>>4 ) // low 4bpp of 6bpp tilemap data
-	GFXDECODE_ENTRY( "tilemap_hi", 0, layout_6bpp_tile_hi,    0x0000, 0x2000>>4 ) // hi 2bpp of 6bpp tilemap data
-	GFXDECODE_ENTRY( "sprites_hi", 0, layout_6bpp_sprite_hi,  0x1000, 0x1000>>4 ) // hi 2bpp of 6bpp sprite data
+GFXDECODE_MEMBER( FDP::gfxinfo )
+	GFXDECODE_DEVICE( nullptr,      0, charlayout,             0x0000, 0x0400>>4 ) /* Dynamically modified */
+	GFXDECODE_DEVICE( nullptr,      0, pivotlayout,            0x0000,  0x400>>4 ) /* Dynamically modified */
+	GFXDECODE_DEVICE( "sprites",    0, gfx_16x16x4_packed_lsb, 0x1000, 0x1000>>4 ) // low 4bpp of 6bpp sprite data
+	GFXDECODE_DEVICE( "tilemap",    0, gfx_16x16x4_packed_lsb, 0x0000, 0x2000>>4 ) // low 4bpp of 6bpp tilemap data
+	GFXDECODE_DEVICE( "tilemap_hi", 0, layout_6bpp_tile_hi,    0x0000, 0x2000>>4 ) // hi 2bpp of 6bpp tilemap data
+	GFXDECODE_DEVICE( "sprites_hi", 0, layout_6bpp_sprite_hi,  0x1000, 0x1000>>4 ) // hi 2bpp of 6bpp sprite data
 GFXDECODE_END
 
 static const gfx_layout bubsympb_sprite_layout = {
@@ -86,10 +86,10 @@ static const gfx_layout bubsympb_layout_5bpp_tile_hi = {
 
 
 GFXDECODE_MEMBER( FDP::gfx_bubsympb )
-	GFXDECODE_ENTRY( nullptr,      0, charlayout,                   0,  64 ) /* Dynamically modified */
-	GFXDECODE_ENTRY( nullptr,      0, pivotlayout,                  0,  64 ) /* Dynamically modified */
-	GFXDECODE_ENTRY( "sprites",    0, bubsympb_sprite_layout,    4096, 256 ) /* Sprites area (6bpp planar) */
-	GFXDECODE_ENTRY( "tilemap",    0, gfx_16x16x4_packed_lsb,       0, 512 ) // low 4bpp of 5bpp tilemap data
-	GFXDECODE_ENTRY( "tilemap_hi", 0, bubsympb_layout_5bpp_tile_hi, 0, 512 ) // hi 1bpp of 5bpp tilemap data
-	GFXDECODE_ENTRY( "sprites",    0, bubsympb_sprite_layout,    4096, 256 ) // dummy gfx duplicate for avoid crash
+	GFXDECODE_DEVICE( nullptr,      0, charlayout,                   0,  64 ) /* Dynamically modified */
+	GFXDECODE_DEVICE( nullptr,      0, pivotlayout,                  0,  64 ) /* Dynamically modified */
+	GFXDECODE_DEVICE( "sprites",    0, bubsympb_sprite_layout,    4096, 256 ) /* Sprites area (6bpp planar) */
+	GFXDECODE_DEVICE( "tilemap",    0, gfx_16x16x4_packed_lsb,       0, 512 ) // low 4bpp of 5bpp tilemap data
+	GFXDECODE_DEVICE( "tilemap_hi", 0, bubsympb_layout_5bpp_tile_hi, 0, 512 ) // hi 1bpp of 5bpp tilemap data
+	GFXDECODE_DEVICE( "sprites",    0, bubsympb_sprite_layout,    4096, 256 ) // dummy gfx duplicate for avoid crash
 GFXDECODE_END

@@ -13,7 +13,7 @@ public:
 	
 	virtual void device_start() override;
 	
-	DECLARE_GFXDECODE_MEMBER(gfx_taito_f3);
+	DECLARE_GFXDECODE_MEMBER(gfxinfo);
 	DECLARE_GFXDECODE_MEMBER(gfx_bubsympb);
 };
 

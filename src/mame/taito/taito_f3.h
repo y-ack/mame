@@ -22,7 +22,6 @@ public:
 		driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
 		m_watchdog(*this, "watchdog"),
-		m_gfxdecode(*this, "gfxdecode"),
 		m_screen(*this, "screen"),
 		m_palette(*this, "palette"),
 		m_eeprom(*this, "eeprom"),
@@ -36,7 +35,7 @@ public:
 		m_dial(*this, "DIAL.%u", 0),
 		m_eepromin(*this, "EEPROMIN"),
 		m_eepromout(*this, "EEPROMOUT"),
-		m_fdp(*this, "tc0630fdp"),
+		m_fdp(*this, "fdp"),
 		m_taito_en(*this, "taito_en"),
 		m_oki(*this, "oki"),
 		m_paletteram32(*this, "paletteram"),
@@ -164,7 +163,6 @@ protected:
 
 	required_device<cpu_device> m_maincpu;
 	optional_device<watchdog_timer_device> m_watchdog;
-	required_device<gfxdecode_device> m_gfxdecode;
 	required_device<screen_device> m_screen;
 	required_device<palette_device> m_palette;
 	optional_device<eeprom_serial_base_device> m_eeprom;
