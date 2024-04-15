@@ -54,6 +54,7 @@ public:
 	void scanline_draw(bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	
 	required_device<palette_device> m_palette;
+	required_device<palette_device> m_palette_12bit;
 	
 protected:
 	
@@ -296,6 +297,7 @@ protected:
 	void pivotram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 	void control_0_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 	void control_1_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	void paletteram_w(offs_t offset, u32 data, u32 mem_mask = ~0);
 	
 };
 

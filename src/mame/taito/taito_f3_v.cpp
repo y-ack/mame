@@ -394,18 +394,11 @@ void taito_f3_state::palette_24bit_w(offs_t offset, u32 data, u32 mem_mask)
 {
 	COMBINE_DATA(&m_paletteram32[offset]);
 	const u32 color = m_paletteram32[offset];
-	rgb_t rgb;
 
-	/* TODO: 12 bit palette games - seems to be selected on a line basis by 6400? */
-	if (m_game == SPCINVDX || m_game == RIDINGF || m_game == ARABIANM || m_game == RINGRAGE) {
-		// .... .... .... .... RRRR GGGG BBBB ....
-		// .... .... RRRR rrrr GGGG gggg BBBB bbbb
-		rgb = rgb_t(BIT(color, 12, 4) * 16, BIT(color, 8, 4) * 16, BIT(color, 4, 4) * 16);
-	} else {
-		rgb = rgb_t(color).set_a(255);
-	}
-
-	m_fdp->m_palette->set_pen_color(offset, rgb);
+	// .... .... .... .... RRRR GGGG BBBB ....
+	// .... .... RRRR rrrr GGGG gggg BBBB bbbb
+	m_fdp->m_palette_12bit->set_pen_color(offset, rgb_t(BIT(color, 12, 4) * 16, BIT(color, 8, 4) * 16, BIT(color, 4, 4) * 16));
+	m_fdp->m_palette->set_pen_color(offset, rgb_t(color).set_a(255));
 }
 
 

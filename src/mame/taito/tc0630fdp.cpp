@@ -10,6 +10,7 @@ FDP::FDP(const machine_config &mconfig, const char *tag, device_t *owner, uint32
 	: device_t(mconfig, TC0630FDP, tag, owner, clock)
 	, device_gfx_interface(mconfig, *this, gfxinfo, "palette")
 	, m_palette(*this, "palette")
+	, m_palette_12bit(*this, "palette_12bit")
 	, m_spriteram(*this, "spriteram", 0x10000, ENDIANNESS_BIG)
 	, m_pfram(*this, "pfram", 0xc000, ENDIANNESS_BIG)
 	, m_textram(*this, "textram", 0x2000, ENDIANNESS_BIG)
@@ -821,7 +822,7 @@ bool FDP::mix_line(Mix *gfx, mix_pix *z, pri_mode *pri, const f3_line_inf &line,
 
 void FDP::render_line(pen_t *dst, const mix_pix (&z)[H_TOTAL])
 {
-	const pen_t *clut = &m_palette->pen(0);
+	const pen_t *clut = m_palette->pens();
 	for (int x = H_START; x < H_END; x++) {
 		const mix_pix mix = z[x];
 		rgb_t s_rgb = clut[mix.src_pal];
@@ -1136,4 +1137,6 @@ void FDP::device_add_mconfig(machine_config &config) {
 	PALETTE(config, m_palette);
 	m_palette->set_entries(0x2000);
 	set_palette(m_palette); // i guess..
+	PALETTE(config, m_palette_12bit);
+	m_palette_12bit->set_entries(0x2000);//->set_format(RRRRGGGGBBBBxxxx, 0x2000);
 }
