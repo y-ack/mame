@@ -175,8 +175,7 @@ void taito_f3_state::f3_map(address_map &map)
 	map(0x4a0000, 0x4a001f).rw(FUNC(taito_f3_state::f3_control_r), FUNC(taito_f3_state::f3_control_w));
 	map(0x4c0000, 0x4c0003).w(FUNC(taito_f3_state::f3_timer_control_w));
 	map(0x600000, 0x63ffff).m(m_fdp, FUNC(FDP::map_ram));
-	map(0x660000, 0x66000f).w(FUNC(taito_f3_state::control_0_w));
-	map(0x660010, 0x66001f).w(FUNC(taito_f3_state::control_1_w));
+	map(0x660000, 0x66001f).m(m_fdp, FUNC(FDP::map_control));
 	map(0xc00000, 0xc007ff).rw("taito_en:dpram", FUNC(mb8421_device::left_r), FUNC(mb8421_device::left_w));
 	map(0xc80000, 0xc80003).w(FUNC(taito_f3_state::sound_reset_0_w));
 	map(0xc80100, 0xc80103).w(FUNC(taito_f3_state::sound_reset_1_w));
@@ -205,8 +204,7 @@ void taito_f3_state::bubsympb_map(address_map &map)
 	map(0x4a001f, 0x4a001f).rw(m_oki, FUNC(okim6295_device::read), FUNC(okim6295_device::write));
 	map(0x4c0000, 0x4c0003).w(FUNC(taito_f3_state::f3_timer_control_w));
 	map(0x600000, 0x63ffff).m(m_fdp, FUNC(FDP::map_ram));
-	map(0x660000, 0x66000f).w(FUNC(taito_f3_state::control_0_w));
-	map(0x660010, 0x66001f).w(FUNC(taito_f3_state::control_1_w));
+	map(0x660000, 0x66001f).m(m_fdp, FUNC(FDP::map_control));
 	map(0xc00000, 0xc007ff).ram();
 }
 
