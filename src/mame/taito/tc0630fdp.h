@@ -4,6 +4,7 @@
 #pragma once
 
 #include "tilemap.h"
+#include "emupal.h"
 #include <bitset>
 
 #define FDP tc0630fdp_device
@@ -28,6 +29,8 @@ public:
 	
 	FDP(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 	
+	void device_add_mconfig(machine_config &config) override;
+	
 	virtual void device_start() override;
 	
 	DECLARE_GFXDECODE_MEMBER(gfxinfo);
@@ -46,9 +49,11 @@ public:
 	bool m_flipscreen = false;
 	bool m_extend = false;
 	
-	void get_sprite_info(const rectangle &visarea);
-	void draw_sprites(const rectangle &cliprect);
+	void read_sprite_info();
+	void draw_sprites();
 	void scanline_draw(bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	
+	required_device<palette_device> m_palette;
 	
 protected:
 	
@@ -251,8 +256,7 @@ protected:
 	bool m_sprite_trails = false;
 	u8 m_sprite_pri_row_usage[256]{};
 	
-	inline void f3_drawgfx(const tempsprite &sprite, const rectangle &cliprect);
-	
+	inline void f3_drawgfx(const tempsprite &sprite);
 	
 	// rendering //////////////////////////////////////////////////////
 	

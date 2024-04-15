@@ -390,10 +390,8 @@ void taito_f3_state::f3(machine_config &config)
 	m_screen->set_screen_update(FUNC(taito_f3_state::screen_update));
 	m_screen->screen_vblank().set(FUNC(taito_f3_state::screen_vblank));
 
-	PALETTE(config, m_palette).set_entries(0x2000);
-
+	//m_fdp->fdp2(config);
 	TC0630FDP(config, m_fdp, 26.686_MHz_XTAL / 4);
-	m_fdp->set_palette(m_palette);
 	
 	/* sound hardware */
 	SPEAKER(config, "lspeaker").front_left();
@@ -447,10 +445,8 @@ void taito_f3_state::bubsympb(machine_config &config)
 	m_screen->set_screen_update(FUNC(taito_f3_state::screen_update));
 	m_screen->screen_vblank().set(FUNC(taito_f3_state::screen_vblank));
 
-	PALETTE(config, m_palette).set_entries(0x2000);
-
 	TC0630FDP(config, m_fdp, 26.686_MHz_XTAL / 4);
-	m_fdp->set_palette(m_palette);
+	//m_fdp->fdp2(config);
 	
 	/* sound hardware */
 	SPEAKER(config, "mono").front_center();

@@ -10,7 +10,6 @@
 #include "machine/eepromser.h"
 #include "machine/watchdog.h"
 #include "sound/okim6295.h"
-#include "emupal.h"
 #include "screen.h"
 
 class taito_f3_state : public driver_device
@@ -21,7 +20,8 @@ public:
 		m_maincpu(*this, "maincpu"),
 		m_watchdog(*this, "watchdog"),
 		m_screen(*this, "screen"),
-		m_palette(*this, "palette"),
+		//m_palette(*this, "palette"),
+		//m_palette_12bit(*this, "palette_12bit"),
 		m_eeprom(*this, "eeprom"),
 		m_input(*this, "IN.%u", 0),
 		m_dial(*this, "DIAL.%u", 0),
@@ -144,7 +144,6 @@ protected:
 	required_device<cpu_device> m_maincpu;
 	optional_device<watchdog_timer_device> m_watchdog;
 	required_device<screen_device> m_screen;
-	required_device<palette_device> m_palette;
 	optional_device<eeprom_serial_base_device> m_eeprom;
 
 	optional_ioport_array<6> m_input;

@@ -405,7 +405,7 @@ void taito_f3_state::palette_24bit_w(offs_t offset, u32 data, u32 mem_mask)
 		rgb = rgb_t(color).set_a(255);
 	}
 
-	m_palette->set_pen_color(offset, rgb);
+	m_fdp->m_palette->set_pen_color(offset, rgb);
 }
 
 
@@ -418,17 +418,17 @@ u32 taito_f3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, c
 
 	// TODO: presumably "sprite lag" is timing of sprite ram/framebuffer access.
 	if (m_fdp->m_sprite_lag == 0) {
-		m_fdp->get_sprite_info(cliprect);
-		m_fdp->draw_sprites(cliprect);
+		m_fdp->read_sprite_info();
+		m_fdp->draw_sprites();
 		m_fdp->scanline_draw(bitmap, cliprect);
 	} else if (m_fdp->m_sprite_lag == 1) {
 		m_fdp->scanline_draw(bitmap, cliprect);
-		m_fdp->get_sprite_info(cliprect);
-		m_fdp->draw_sprites(cliprect);
+		m_fdp->read_sprite_info();
+		m_fdp->draw_sprites();
 	} else { // 2
 		m_fdp->scanline_draw(bitmap, cliprect);
-		m_fdp->draw_sprites(cliprect);
-		m_fdp->get_sprite_info(cliprect);
+		m_fdp->draw_sprites();
+		m_fdp->read_sprite_info();
 	}
 
 	return 0;

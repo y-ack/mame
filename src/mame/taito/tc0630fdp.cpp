@@ -9,6 +9,7 @@ DEFINE_DEVICE_TYPE(TC0630FDP, FDP, "tc0630fdp", "Taito TC0630FDP")
 FDP::FDP(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: device_t(mconfig, TC0630FDP, tag, owner, clock)
 	, device_gfx_interface(mconfig, *this, gfxinfo, "palette")
+	, m_palette(*this, "palette")
 	, m_spriteram(*this, "spriteram", 0x10000, ENDIANNESS_BIG)
 	, m_pfram(*this, "pfram", 0xc000, ENDIANNESS_BIG)
 	, m_textram(*this, "textram", 0x2000, ENDIANNESS_BIG)
@@ -20,6 +21,7 @@ FDP::FDP(const machine_config &mconfig, const char *tag, device_t *owner, uint32
 
 void FDP::device_start() {
 	//decode_gfx(gfxinfo);
+	
 }
 
 /******************************************************************************/
@@ -640,7 +642,7 @@ FDP::calc_clip(const clip_plane_inf (&clip)[NUM_CLIPPLANES], const Mix line)
 {
 	using clip_range = clip_plane_inf;
 	constexpr s16 INF_L = H_START;
-	constexpr s16 INF_R = H_START + H_VIS;
+	constexpr s16 INF_R = H_END;
 
 	std::bitset<4> normal_planes = line->clip_enable() & ~line->clip_inv();
 	std::bitset<4> invert_planes = line->clip_enable() & line->clip_inv();
@@ -819,8 +821,8 @@ bool FDP::mix_line(Mix *gfx, mix_pix *z, pri_mode *pri, const f3_line_inf &line,
 
 void FDP::render_line(pen_t *dst, const mix_pix (&z)[H_TOTAL])
 {
-	const pen_t *clut = &palette().pen(0);
-	for (int x = H_START; x < H_START + H_VIS; x++) {
+	const pen_t *clut = &m_palette->pen(0);
+	for (int x = H_START; x < H_END; x++) {
 		const mix_pix mix = z[x];
 		rgb_t s_rgb = clut[mix.src_pal];
 		rgb_t d_rgb = clut[mix.dst_pal];
@@ -932,7 +934,7 @@ void FDP::scanline_draw(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 
 /******************************************************************************/
 
-inline void FDP::f3_drawgfx(const FDP::tempsprite &sprite, const rectangle &cliprect)
+inline void FDP::f3_drawgfx(const tempsprite &sprite)
 {
 	bitmap_ind16 &dest_bmp = m_sprite_framebuffers[sprite.pri];
 
@@ -951,7 +953,7 @@ inline void FDP::f3_drawgfx(const FDP::tempsprite &sprite, const rectangle &clip
 	for (u8 y = 0; y < 16; y++) {
 		const int dy = dy8 >> 8;
 		dy8 += sprite.scale_y;
-		if (dy < cliprect.min_y || dy > cliprect.max_y)
+		if (dy < V_START || dy >= V_END)
 			continue;
 		u8 *pri = &m_pri_alp_bitmap.pix(dy);
 		u16 *dest = &dest_bmp.pix(dy);
@@ -963,7 +965,7 @@ inline void FDP::f3_drawgfx(const FDP::tempsprite &sprite, const rectangle &clip
 			const int dx = dx8 >> 8;
 			dx8 += sprite.scale_x;
 			// is this necessary with the large margins outside visarea?
-			if (dx < cliprect.min_x || dx > cliprect.max_x)
+			if (dx < H_START || dx >= H_END)
 				continue;
 			if (dx == dx8 >> 8) // if the next pixel would be in the same column, skip this one
 				continue;
@@ -977,10 +979,8 @@ inline void FDP::f3_drawgfx(const FDP::tempsprite &sprite, const rectangle &clip
 	}
 }
 
-void FDP::get_sprite_info(const rectangle &visarea)
+void FDP::read_sprite_info()
 {
-	const u16 *spriteram16_ptr = m_spriteram.target();
-
 	struct sprite_axis {
 		fixed8 block_scale = 1 << 8;
 		fixed8 pos = 0, block_pos = 0;
@@ -999,7 +999,6 @@ void FDP::get_sprite_info(const rectangle &visarea)
 				if (!BIT(scroll, 2))
 					new_pos += subglobal;
 			}
-
 
 			switch (block_ctrl) {
 			case 0b00:
@@ -1021,13 +1020,13 @@ void FDP::get_sprite_info(const rectangle &visarea)
 	u8 color = 0;
 	bool multi = false;
 
-	FDP::tempsprite *sprite_ptr = &m_spritelist[0];
+	tempsprite *sprite_ptr = &m_spritelist[0];
 	int total_sprites = 0;
 
 	for (int offs = 0; offs < 0x400 && (total_sprites < 0x400); offs++) {
 		total_sprites++; // prevent infinite loops
 		const int bank = m_sprite_bank ? 0x4000 : 0;
-		const u16 *spr = &spriteram16_ptr[bank + (offs * 8)];
+		const u16 *spr = &m_spriteram[bank + (offs * 8)];
 
 		// Check if special command bit is set
 		if (BIT(spr[3], 15)) {
@@ -1097,7 +1096,7 @@ void FDP::get_sprite_info(const rectangle &visarea)
 		const fixed8 tx = m_flipscreen ? (512<<8) - x.block_scale*16 - x.pos : x.pos;
 		const fixed8 ty = m_flipscreen ? (256<<8) - y.block_scale*16 - y.pos : y.pos;
 
-		if (tx + x.block_scale*16 <= visarea.min_x<<8 || tx > visarea.max_x<<8 || ty + y.block_scale*16 <= visarea.min_y<<8 || ty > visarea.max_y<<8)
+		if (tx + x.block_scale*16 <= H_START<<8 || tx >= H_END<<8 || ty + y.block_scale*16 <= V_START<<8 || ty > V_END<<8)
 			continue;
 
 		const bool flip_x = BIT(spritecont, 0);
@@ -1118,7 +1117,7 @@ void FDP::get_sprite_info(const rectangle &visarea)
 }
 
 
-void FDP::draw_sprites(const rectangle &cliprect)
+void FDP::draw_sprites()
 {
 	if (!m_sprite_trails) {
 		m_pri_alp_bitmap.fill(0);
@@ -1129,6 +1128,12 @@ void FDP::draw_sprites(const rectangle &cliprect)
 	}
 
 	for (const auto *spr = m_sprite_end; spr-- != &m_spritelist[0]; ) {
-		f3_drawgfx(*spr, cliprect);
+		f3_drawgfx(*spr);
 	}
+}
+
+void FDP::device_add_mconfig(machine_config &config) {
+	PALETTE(config, m_palette);
+	m_palette->set_entries(0x2000);
+	set_palette(m_palette); // i guess..
 }
