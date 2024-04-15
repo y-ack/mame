@@ -368,8 +368,6 @@ void taito_f3_state::video_start()
 {
 	const F3config *pCFG = &f3_config_table[0];
 
-	m_fdp->m_spritelist = nullptr;
-
 	/* Setup individual game */
 	do {
 		if (pCFG->name == m_game) {
@@ -379,23 +377,14 @@ void taito_f3_state::video_start()
 	} while (pCFG->name);
 
 	m_game_config = pCFG;
-
-	m_fdp->create_tilemaps(m_game_config->extend);
 	
 	m_screen->register_screen_bitmap(m_fdp->m_pri_alp_bitmap);
 	for (auto &sp_bitmap : m_fdp->m_sprite_framebuffers) {
 		m_screen->register_screen_bitmap(sp_bitmap);
 	}
 	
-	// Palettes have 4 bpp indexes despite up to 6 bpp data. The unused top bits in the gfx data are cleared later.
-	m_fdp->gfx(2)->set_granularity(16);
-	m_fdp->gfx(3)->set_granularity(16);
-
-	m_fdp->m_flipscreen = false;
-	m_fdp->m_sprite_bank = false;
-	m_fdp->m_sprite_trails = false;
-	memset(&m_fdp->m_spriteram[0], 0, 0x10000);
-
+	m_fdp->create_tilemaps(m_game_config->extend);
+	
 	m_fdp->m_sprite_lag = m_game_config->sprite_lag;
 }
 

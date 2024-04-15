@@ -338,6 +338,14 @@ void FDP::create_tilemaps(bool extend)
 
 	save_item(NAME(m_control_0));
 	save_item(NAME(m_control_1));
+	
+	// Palettes have 4 bpp indexes despite up to 6 bpp data. The unused top bits in the gfx data are cleared later.
+	gfx(2)->set_granularity(16);
+	gfx(3)->set_granularity(16);
+
+	m_flipscreen = false;
+	m_sprite_bank = false;
+	m_sprite_trails = false;
 }
 
 template<unsigned Layer>
@@ -628,8 +636,7 @@ void FDP::get_pf_scroll(int pf_num, fixed8 &reg_sx, fixed8 &reg_sy)
 
 template<typename Mix>
 std::vector<FDP::clip_plane_inf>
-FDP::calc_clip(const clip_plane_inf (&clip)[NUM_CLIPPLANES],
-						  const Mix line)
+FDP::calc_clip(const clip_plane_inf (&clip)[NUM_CLIPPLANES], const Mix line)
 {
 	using clip_range = clip_plane_inf;
 	constexpr s16 INF_L = H_START;

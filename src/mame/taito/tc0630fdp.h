@@ -11,56 +11,48 @@
 class FDP : public device_t, public device_gfx_interface
 {
 public:
-	using fixed8 = s32;
+	static inline constexpr int H_TOTAL = 432;
+	static inline constexpr int H_START = 46;
+	static inline constexpr int H_VIS   = 320;
+	static inline constexpr int H_END   = H_START+H_VIS;
+	
+	static inline constexpr int V_TOTAL = 262;
+	static inline constexpr int V_START = 24;
+	static inline constexpr int V_VIS   = 232;
+	static inline constexpr int V_END   = V_START+V_VIS;
+	
+	static inline constexpr int NUM_PLAYFIELDS = 4;
+	static inline constexpr int NUM_TILEMAPS = 5;
+	static inline constexpr int NUM_SPRITEGROUPS = 4; // high 2 bits of color
+	static inline constexpr int NUM_CLIPPLANES = 4;
 	
 	FDP(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 	
 	virtual void device_start() override;
 	
-	void tile_decode();
-	
 	DECLARE_GFXDECODE_MEMBER(gfxinfo);
 	DECLARE_GFXDECODE_MEMBER(gfx_bubsympb);
-	
-	std::unique_ptr<u8[]> m_decoded_gfx4;
-	std::unique_ptr<u8[]> m_decoded_gfx5;
 	
 	void map_ram(address_map &map);
 	void map_control(address_map &map);
 	
-	u16 spriteram_r(offs_t offset);
-	void spriteram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 pfram_r(offs_t offset);
-	void pfram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 textram_r(offs_t offset);
-	void textram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 charram_r(offs_t offset);
-	void charram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 lineram_r(offs_t offset);
-	void lineram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	u16 pivotram_r(offs_t offset);
-	void pivotram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-
-	memory_share_creator<u16> m_spriteram;
-	memory_share_creator<u16> m_pfram;
-	memory_share_creator<u16> m_textram;
-	memory_share_creator<u16> m_charram;
-	memory_share_creator<u16> m_lineram;
-	memory_share_creator<u16> m_pivotram;
-	u16 m_control_0[8]{};
-	u16 m_control_1[8]{};
+	void tile_decode();
 	
-	static inline constexpr int H_TOTAL = 432;
-	static inline constexpr int H_VIS   = 320;
-	static inline constexpr int H_START = 46;
-	static inline constexpr int V_TOTAL = 262;
-	static inline constexpr int V_VIS   = 232;
-	static inline constexpr int V_START = 24;
-
-	static inline constexpr int NUM_PLAYFIELDS = 4;
-	static inline constexpr int NUM_TILEMAPS = 5;
-	static inline constexpr int NUM_SPRITEGROUPS = 4; // high 2 bits of color
-	static inline constexpr int NUM_CLIPPLANES = 4;
+	void create_tilemaps(bool extend);
+	
+	int m_sprite_lag = 0;
+	bitmap_ind8 m_pri_alp_bitmap;
+	bitmap_ind16 m_sprite_framebuffers[NUM_SPRITEGROUPS]{};
+	bool m_flipscreen = false;
+	bool m_extend = false;
+	
+	void get_sprite_info(const rectangle &visarea);
+	void draw_sprites(const rectangle &cliprect);
+	void scanline_draw(bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	
+protected:
+	
+	using fixed8 = s32;
 	
 	struct tempsprite {
 		int code; // 17 bits
@@ -232,47 +224,75 @@ public:
 		playfield_inf pf[NUM_PLAYFIELDS];
 	};
 	
-	u8 m_sprite_extra_planes = 0;
-	u8 m_sprite_pen_mask = 0;
-	bool m_sprite_trails = false;
-	u16 *m_pf_data[8]{};
-	int m_sprite_lag = 0;
-	u8 m_sprite_pri_row_usage[256]{};
-	bitmap_ind8 m_pri_alp_bitmap;
-	bitmap_ind16 m_sprite_framebuffers[NUM_SPRITEGROUPS]{};
-	u16 m_width_mask = 0;
-	u8 m_twidth_mask = 0;
-	u8 m_twidth_mask_bit = 0;
-	std::unique_ptr<tempsprite[]> m_spritelist;
-	const tempsprite *m_sprite_end = nullptr;
-	bool m_sprite_bank = 0;
 	//f3_line_inf m_line_inf;
 
-	void create_tilemaps(bool extend);
+	std::unique_ptr<u8[]> m_decoded_gfx4;
+	std::unique_ptr<u8[]> m_decoded_gfx5;
+	
+	u16 *m_pf_data[8]{};
 	tilemap_t *m_tilemap[8] = {nullptr};
 	tilemap_t *m_pixel_layer = nullptr;
 	tilemap_t *m_vram_layer = nullptr;
-	template<unsigned Layer> TILE_GET_INFO_MEMBER(get_tile_info);
+	
+	template<unsigned Layer>
+	TILE_GET_INFO_MEMBER(get_tile_info);
 	TILE_GET_INFO_MEMBER(get_tile_info_text);
 	TILE_GET_INFO_MEMBER(get_tile_info_pixel);
 	
-	bool m_flipscreen = false;
-	bool m_extend = false;
+//protected:
 	
+	// sprites /////////////////////////////////////////////////////
+	
+	std::unique_ptr<tempsprite[]> m_spritelist;
+	const tempsprite *m_sprite_end = nullptr;
+	bool m_sprite_bank = 0;
+	u8 m_sprite_extra_planes = 0;
+	u8 m_sprite_pen_mask = 0;
+	bool m_sprite_trails = false;
+	u8 m_sprite_pri_row_usage[256]{};
+	
+	inline void f3_drawgfx(const tempsprite &sprite, const rectangle &cliprect);
+	
+	
+	// rendering //////////////////////////////////////////////////////
+	
+	u16 m_width_mask = 0;
+	
+   void get_pf_scroll(int pf_num, fixed8 &reg_sx, fixed8 &reg_sy);
+	void read_line_ram(f3_line_inf &line, int y);
+	template<typename Mix>
+	std::vector<clip_plane_inf> calc_clip(const clip_plane_inf (&clip)[NUM_CLIPPLANES], const Mix line);
+	
+	template<typename Mix>
+	bool mix_line(Mix *gfx, mix_pix *z, pri_mode *pri, const f3_line_inf &line, const clip_plane_inf &range);
+	void render_line(pen_t *dst, const mix_pix (&z)[432]);
+	
+	// memory //////////////////////////////////////////////////////
+	
+	memory_share_creator<u16> m_spriteram;
+	memory_share_creator<u16> m_pfram;
+	memory_share_creator<u16> m_textram;
+	memory_share_creator<u16> m_charram;
+	memory_share_creator<u16> m_lineram;
+	memory_share_creator<u16> m_pivotram;
+	u16 m_control_0[8]{};
+	u16 m_control_1[8]{};
+	
+	u16 spriteram_r(offs_t offset);
+	void spriteram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	u16 pfram_r(offs_t offset);
+	void pfram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	u16 textram_r(offs_t offset);
+	void textram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	u16 charram_r(offs_t offset);
+	void charram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	u16 lineram_r(offs_t offset);
+	void lineram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
+	u16 pivotram_r(offs_t offset);
+	void pivotram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 	void control_0_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 	void control_1_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 	
-	inline void f3_drawgfx(const FDP::tempsprite &sprite, const rectangle &cliprect);
-	void get_sprite_info(const rectangle &visarea);
-	void draw_sprites(const rectangle &cliprect);
-	void get_pf_scroll(int pf_num, fixed8 &reg_sx, fixed8 &reg_sy);
-	void read_line_ram(f3_line_inf &line, int y);
-	void render_line(pen_t *dst, const mix_pix (&z)[432]);
-	void scanline_draw(bitmap_rgb32 &bitmap, const rectangle &cliprect);
-	template<typename Mix>
-	std::vector<clip_plane_inf> calc_clip(const clip_plane_inf (&clip)[NUM_CLIPPLANES], const Mix line);
-	template<typename Mix>
-	bool mix_line(Mix *gfx, mix_pix *z, pri_mode *pri, const f3_line_inf &line, const clip_plane_inf &range);
 };
 
 DECLARE_DEVICE_TYPE(TC0630FDP, FDP)
