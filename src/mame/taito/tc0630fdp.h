@@ -228,6 +228,7 @@ protected:
 		pivot_inf pivot;
 		sprite_inf sp[NUM_SPRITEGROUPS];
 		playfield_inf pf[NUM_PLAYFIELDS];
+		bool palette_12bit{0};
 	};
 	
 	//f3_line_inf m_line_inf;
@@ -270,7 +271,7 @@ protected:
 	
 	template<typename Mix>
 	bool mix_line(Mix *gfx, mix_pix *z, pri_mode *pri, const f3_line_inf &line, const clip_plane_inf &range);
-	void render_line(pen_t *dst, const mix_pix (&z)[432]);
+	void render_line(pen_t *dst, const mix_pix (&z)[432], const pen_t *clut);
 	
 	// memory //////////////////////////////////////////////////////
 	

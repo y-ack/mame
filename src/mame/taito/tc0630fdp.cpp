@@ -507,7 +507,9 @@ void FDP::read_line_ram(f3_line_inf &line, int y)
 			sp.x_sample_enable = BIT(x_mosaic, 8);
 		}
 		line.pivot.x_sample_enable = BIT(x_mosaic, 9);
-
+		
+		line.palette_12bit = !BIT(x_mosaic, 14);
+		
 		line.fx_6400 = (x_mosaic & 0xfc00) >> 8; // palette interpretation [unimplemented]
 		if (TAITOF3_VIDEO_DEBUG == 1) {
 			// gseeker(intro):40, ringrage/arabianm:30/33, ridingf:30/31, spcinvdj:30, gunlock:78
@@ -820,9 +822,8 @@ bool FDP::mix_line(Mix *gfx, mix_pix *z, pri_mode *pri, const f3_line_inf &line,
 	return false; // TODO: determine when we can stop drawing?
 }
 
-void FDP::render_line(pen_t *dst, const mix_pix (&z)[H_TOTAL])
+void FDP::render_line(pen_t *dst, const mix_pix (&z)[H_TOTAL], const pen_t *clut)
 {
-	const pen_t *clut = m_palette->pens();
 	for (int x = H_START; x < H_END; x++) {
 		const mix_pix mix = z[x];
 		rgb_t s_rgb = clut[mix.src_pal];
@@ -921,7 +922,8 @@ void FDP::scanline_draw(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 				}
 			}
 
-			render_line(&bitmap.pix(screen_y), line_buf);
+			const pen_t *clut = (line_data.palette_12bit ? m_palette_12bit : m_palette)->pens();
+			render_line(&bitmap.pix(screen_y), line_buf, clut);
 		}
 
 		if (screen_y != 0) {
