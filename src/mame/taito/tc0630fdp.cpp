@@ -69,10 +69,10 @@ static const gfx_layout layout_6bpp_tile_hi = {
 
 GFXDECODE_MEMBER( FDP::gfxinfo )
 	GFXDECODE_DEVICE( nullptr,      0, charlayout,             0x0000, 0x0400>>4 ) /* Dynamically modified */
-	GFXDECODE_DEVICE( nullptr,      0, pivotlayout,            0x0000,  0x400>>4 ) /* Dynamically modified */
+	GFXDECODE_DEVICE( nullptr,      0, pivotlayout,            0x0000, 0x0400>>4 ) /* Dynamically modified */
 	GFXDECODE_DEVICE( "sprites",    0, gfx_16x16x4_packed_lsb, 0x1000, 0x1000>>4 ) // low 4bpp of 6bpp sprite data
-	GFXDECODE_DEVICE( "tilemap",    0, gfx_16x16x4_packed_lsb, 0x0000, 0x2000>>4 ) // low 4bpp of 6bpp tilemap data
-	GFXDECODE_DEVICE( "tilemap_hi", 0, layout_6bpp_tile_hi,    0x0000, 0x2000>>4 ) // hi 2bpp of 6bpp tilemap data
+	GFXDECODE_DEVICE( "tiles",      0, gfx_16x16x4_packed_lsb, 0x0000, 0x2000>>4 ) // low 4bpp of 6bpp tilemap data
+	GFXDECODE_DEVICE( "tiles_hi",   0, layout_6bpp_tile_hi,    0x0000, 0x2000>>4 ) // hi 2bpp of 6bpp tilemap data
 	GFXDECODE_DEVICE( "sprites_hi", 0, layout_6bpp_sprite_hi,  0x1000, 0x1000>>4 ) // hi 2bpp of 6bpp sprite data
 GFXDECODE_END
 
@@ -96,32 +96,19 @@ static const gfx_layout bubsympb_layout_5bpp_tile_hi = {
 	16*16
 };
 
-
 GFXDECODE_MEMBER( FDP::gfx_bubsympb )
-	GFXDECODE_DEVICE( nullptr,      0, charlayout,                   0,  64 ) /* Dynamically modified */
-	GFXDECODE_DEVICE( nullptr,      0, pivotlayout,                  0,  64 ) /* Dynamically modified */
-	GFXDECODE_DEVICE( "sprites",    0, bubsympb_sprite_layout,    4096, 256 ) /* Sprites area (6bpp planar) */
-	GFXDECODE_DEVICE( "tilemap",    0, gfx_16x16x4_packed_lsb,       0, 512 ) // low 4bpp of 5bpp tilemap data
-	GFXDECODE_DEVICE( "tilemap_hi", 0, bubsympb_layout_5bpp_tile_hi, 0, 512 ) // hi 1bpp of 5bpp tilemap data
-	GFXDECODE_DEVICE( "sprites",    0, bubsympb_sprite_layout,    4096, 256 ) // dummy gfx duplicate for avoid crash
+	GFXDECODE_DEVICE( nullptr,      0, charlayout,                  0x0000, 0x0400>>4) /* Dynamically modified */
+	GFXDECODE_DEVICE( nullptr,      0, pivotlayout,                 0x0000, 0x0400>>4) /* Dynamically modified */
+	GFXDECODE_DEVICE( "sprites",    0, bubsympb_sprite_layout,      0x1000, 0x1000>>4) /* Sprites area (6bpp planar) */
+	GFXDECODE_DEVICE( "tiles",      0, gfx_16x16x4_packed_lsb,      0x0000, 0x2000>>4) // low 4bpp of 5bpp tilemap data
+	GFXDECODE_DEVICE( "tiles_hi",   0, bubsympb_layout_5bpp_tile_hi,0x0000, 0x2000>>4) // hi 1bpp of 5bpp tilemap data
+	GFXDECODE_DEVICE( "sprites",    0, bubsympb_sprite_layout,      0x1000, 0x1000>>4) // dummy gfx duplicate for avoid crash
 GFXDECODE_END
 
 void FDP::tile_decode()
 {
-	/* Setup ROM formats:
-
-	    Some games will only use 4 or 5 bpp sprites, and some only use 4 bpp tiles,
-	    I don't believe this is software or prom controlled but simply the unused data lines
-	    are tied low on the game board if unused.  This is backed up by the fact the palette
-	    indices are always related to 4 bpp data, even in 6 bpp games.
-
-	    Most (all?) games with 5bpp tiles have the sixth bit set. Also, in Arabian Magic
-	    sprites 1200-120f contain 6bpp data which is probably bogus.
-	    video_start clears the fifth and sixth bit of the decoded graphics according
-	    to the bit depth specified in f3_config_table.
-
-	*/
-
+	// the upper 2 bitplanes are interleaved differently than the lower 4, so they have to be merged manually
+	
 	u8 *dest;
 	// all but bubsymphb (bootleg board with different sprite gfx layout), 2mindril (no sprite gfx roms)
 	if (gfx(5) != nullptr) {
@@ -296,7 +283,7 @@ void FDP::control_1_w(offs_t offset, u16 data, u16 mem_mask)
 void FDP::create_tilemaps(bool extend)
 {
 	m_extend = extend;
-	// TODO: we need to free these if this is called multiple times
+	// TODO: extend can be changed at runtime.. how do we deal with that?
 	if (m_extend) {
 		m_tilemap[0] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<0>)), TILEMAP_SCAN_ROWS, 16, 16, 64, 32);
 		m_tilemap[1] = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info<1>)), TILEMAP_SCAN_ROWS, 16, 16, 64, 32);

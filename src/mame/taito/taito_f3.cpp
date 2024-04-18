@@ -378,20 +378,18 @@ void taito_f3_state::f3(machine_config &config)
 
 	/* video hardware */
 	SCREEN(config, m_screen, SCREEN_TYPE_RASTER);
-	// from taito z system and crystal on board
-	// and measurements from https://www.arcade-projects.com/threads/the-taito-f3-sync.12343/
+	// measured from hardware
 	m_screen->set_raw(
 		26.686_MHz_XTAL / 4,
 		432, 46, 320 + 46,
 		262, 24, 232 + 24
 	);
 	// refresh rate = 26686000/4/432/262 = 58.94..
-
 	m_screen->set_screen_update(FUNC(taito_f3_state::screen_update));
 	m_screen->screen_vblank().set(FUNC(taito_f3_state::screen_vblank));
 
-	//m_fdp->fdp2(config);
 	TC0630FDP(config, m_fdp, 26.686_MHz_XTAL / 4);
+	m_fdp->tile_decode();
 	
 	/* sound hardware */
 	SPEAKER(config, "lspeaker").front_left();
@@ -400,29 +398,6 @@ void taito_f3_state::f3(machine_config &config)
 	TAITO_EN(config, m_taito_en, 0);
 	m_taito_en->add_route(0, "lspeaker", 1.0);
 	m_taito_en->add_route(1, "rspeaker", 1.0);
-}
-
-/* These games reprogram the video output registers to display different scanlines,
- we can't change our screen display at runtime, so we do it here instead.  None
- of the games change the registers during the game (to do so would probably require
- monitor recalibration.)
-*/
-void taito_f3_state::f3_224a(machine_config &config)
-{
-	f3(config);
-	m_screen->set_visarea(46, 40*8-1 + 46, 31, 31+224-1);
-}
-
-void taito_f3_state::f3_224b(machine_config &config)
-{
-	f3(config);
-	m_screen->set_visarea(46, 40*8-1 + 46, 32, 32+224-1);
-}
-
-void taito_f3_state::f3_224c(machine_config &config)
-{
-	f3(config);
-	m_screen->set_visarea(46, 40*8-1 + 46, 24, 24+224-1);
 }
 
 void taito_f3_state::bubsympb(machine_config &config)
@@ -438,15 +413,16 @@ void taito_f3_state::bubsympb(machine_config &config)
 
 	/* video hardware */
 	SCREEN(config, m_screen, SCREEN_TYPE_RASTER);
-	m_screen->set_refresh_hz(58.97);
-	m_screen->set_vblank_time(ATTOSECONDS_IN_USEC(624)); /* 58.97 Hz, 624us vblank time */
-	m_screen->set_size(40*8+48*2, 32*8);
-	m_screen->set_visarea(46, 40*8-1 + 46, 31, 31+224-1);
+	m_screen->set_raw(
+		26.686_MHz_XTAL / 4,
+		432, 46, 320 + 46,
+		262, 24, 232 + 24
+	);
 	m_screen->set_screen_update(FUNC(taito_f3_state::screen_update));
 	m_screen->screen_vblank().set(FUNC(taito_f3_state::screen_vblank));
 
 	TC0630FDP(config, m_fdp, 26.686_MHz_XTAL / 4);
-	//m_fdp->fdp2(config);
+	m_fdp->tile_decode();
 	
 	/* sound hardware */
 	SPEAKER(config, "mono").front_center();
@@ -459,7 +435,7 @@ void taito_f3_state::bubsympb(machine_config &config)
 /******************************************************************************/
 
 #define EMPTY_SPRITE_HIDATA(len) ROM_REGION(len, "fdp:sprites_hi", ROMREGION_ERASE00 )
-#define EMPTY_TILEMAP_HIDATA(len) ROM_REGION(len, "fdp:tilemap_hi", ROMREGION_ERASE00 )
+#define EMPTY_TILE_HIDATA(len) ROM_REGION(len, "fdp:tiles_hi", ROMREGION_ERASE00 )
 
 ROM_START( ringrage )
 	ROM_REGION( 0x200000, "maincpu", 0 ) /* 68020 code */
@@ -475,11 +451,11 @@ ROM_START( ringrage )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d21-04.68", 0x000000, 0x200000, CRC(9dcdceca) SHA1(e12bab5307ebe4c3b5f9284c91f3bf7ba4c8e9bc) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0 ) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0 ) /* Tiles */
 	ROM_LOAD32_WORD("d21-06.49", 0x000000, 0x080000, CRC(92d4a720) SHA1(81dc58c58d5f4f20ceeb5d6b90491f1efcbc67d3) )
 	ROM_LOAD32_WORD("d21-07.50", 0x000002, 0x080000, CRC(6da696e9) SHA1(74332090b0de4193a669cd5242fd655e7b90f772) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d21-08.51", 0x000000, 0x080000, CRC(a0d95be9) SHA1(1746097e827ac10906f012c5c4f93c388a30f4b3) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -506,11 +482,11 @@ ROM_START( ringrageu )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d21-04.68", 0x000000, 0x200000, CRC(9dcdceca) SHA1(e12bab5307ebe4c3b5f9284c91f3bf7ba4c8e9bc) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0 ) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0 ) /* Tiles */
 	ROM_LOAD32_WORD("d21-06.49", 0x000000, 0x080000, CRC(92d4a720) SHA1(81dc58c58d5f4f20ceeb5d6b90491f1efcbc67d3) )
 	ROM_LOAD32_WORD("d21-07.50", 0x000002, 0x080000, CRC(6da696e9) SHA1(74332090b0de4193a669cd5242fd655e7b90f772) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d21-08.51", 0x000000, 0x080000, CRC(a0d95be9) SHA1(1746097e827ac10906f012c5c4f93c388a30f4b3) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -537,11 +513,11 @@ ROM_START( ringragej )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d21-04.68", 0x000000, 0x200000, CRC(9dcdceca) SHA1(e12bab5307ebe4c3b5f9284c91f3bf7ba4c8e9bc) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0 ) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0 ) /* Tiles */
 	ROM_LOAD32_WORD("d21-06.49", 0x000000, 0x080000, CRC(92d4a720) SHA1(81dc58c58d5f4f20ceeb5d6b90491f1efcbc67d3) )
 	ROM_LOAD32_WORD("d21-07.50", 0x000002, 0x080000, CRC(6da696e9) SHA1(74332090b0de4193a669cd5242fd655e7b90f772) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d21-08.51", 0x000000, 0x080000, CRC(a0d95be9) SHA1(1746097e827ac10906f012c5c4f93c388a30f4b3) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -568,11 +544,11 @@ ROM_START( arabianm )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d29-05.ic68", 0x000000, 0x100000, CRC(9b5f7a17) SHA1(89d9faedc7b55df6237f2c2ebb43de7de685cb66) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d29-06.ic49", 0x000000, 0x080000, CRC(eea07bf3) SHA1(7860a2c0c592af000b56e59bd39d67b086fe3606) )
 	ROM_LOAD32_WORD("d29-07.ic50", 0x000002, 0x080000, CRC(db3c094d) SHA1(5b60f0fa1054bf93ce51d310376b1abdb3022541) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d29-08.ic51", 0x000000, 0x080000, CRC(d7562851) SHA1(91d86e75ba7a590ca298b932b4cf8fa9228f115e) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -610,11 +586,11 @@ ROM_START( arabianmj )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d29-05.ic68", 0x000000, 0x100000, CRC(9b5f7a17) SHA1(89d9faedc7b55df6237f2c2ebb43de7de685cb66) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d29-06.ic49", 0x000000, 0x080000, CRC(eea07bf3) SHA1(7860a2c0c592af000b56e59bd39d67b086fe3606) )
 	ROM_LOAD32_WORD("d29-07.ic50", 0x000002, 0x080000, CRC(db3c094d) SHA1(5b60f0fa1054bf93ce51d310376b1abdb3022541) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d29-08.ic51", 0x000000, 0x080000, CRC(d7562851) SHA1(91d86e75ba7a590ca298b932b4cf8fa9228f115e) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -652,11 +628,11 @@ ROM_START( arabianmu )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d29-05.ic68", 0x000000, 0x100000, CRC(9b5f7a17) SHA1(89d9faedc7b55df6237f2c2ebb43de7de685cb66) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d29-06.ic49", 0x000000, 0x080000, CRC(eea07bf3) SHA1(7860a2c0c592af000b56e59bd39d67b086fe3606) )
 	ROM_LOAD32_WORD("d29-07.ic50", 0x000002, 0x080000, CRC(db3c094d) SHA1(5b60f0fa1054bf93ce51d310376b1abdb3022541) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d29-08.ic51", 0x000000, 0x080000, CRC(d7562851) SHA1(91d86e75ba7a590ca298b932b4cf8fa9228f115e) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -693,11 +669,11 @@ ROM_START( ridingf )
 
 	EMPTY_SPRITE_HIDATA(0x200000)
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d34-05.49", 0x000000, 0x080000, CRC(72e3ee4b) SHA1(2b69487338c18ced7a2ac4f280e8e22aa7209eb3) )
 	ROM_LOAD32_WORD("d34-06.50", 0x000002, 0x080000, CRC(edc9b9f3) SHA1(c57bec1c8882d95388c3fae7cb5a321bdb202737) )
 
-	EMPTY_TILEMAP_HIDATA(0x080000)
+	EMPTY_TILE_HIDATA(0x080000)
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
 	ROM_LOAD16_BYTE("d34-07.5", 0x100000, 0x20000, CRC(67239e2b) SHA1(8e0268fab53d26cde5c1928326c4787533dc6ffe) )
@@ -722,11 +698,11 @@ ROM_START( ridingfj )
 
 	EMPTY_SPRITE_HIDATA(0x200000)
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d34-05.49", 0x000000, 0x080000, CRC(72e3ee4b) SHA1(2b69487338c18ced7a2ac4f280e8e22aa7209eb3) )
 	ROM_LOAD32_WORD("d34-06.50", 0x000002, 0x080000, CRC(edc9b9f3) SHA1(c57bec1c8882d95388c3fae7cb5a321bdb202737) )
 
-	EMPTY_TILEMAP_HIDATA(0x080000)
+	EMPTY_TILE_HIDATA(0x080000)
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
 	ROM_LOAD16_BYTE("d34-07.5", 0x100000, 0x20000, CRC(67239e2b) SHA1(8e0268fab53d26cde5c1928326c4787533dc6ffe) )
@@ -751,11 +727,11 @@ ROM_START( ridingfu )
 
 	EMPTY_SPRITE_HIDATA(0x200000)
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d34-05.49", 0x000000, 0x080000, CRC(72e3ee4b) SHA1(2b69487338c18ced7a2ac4f280e8e22aa7209eb3) )
 	ROM_LOAD32_WORD("d34-06.50", 0x000002, 0x080000, CRC(edc9b9f3) SHA1(c57bec1c8882d95388c3fae7cb5a321bdb202737) )
 
-	EMPTY_TILEMAP_HIDATA(0x080000)
+	EMPTY_TILE_HIDATA(0x080000)
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
 	ROM_LOAD16_BYTE("d34-07.5", 0x100000, 0x20000, CRC(67239e2b) SHA1(8e0268fab53d26cde5c1928326c4787533dc6ffe) )
@@ -784,11 +760,11 @@ ROM_START( gseeker )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d40_05.rom", 0x000000, 0x100000, CRC(be6eec8f) SHA1(725e5e09f6ee60bd4c38fa223c4dea202c56f75f) )
 	ROM_LOAD32_WORD("d40_06.rom", 0x000002, 0x100000, CRC(a822abe4) SHA1(1a0dd9dcb8e24daab6eb1661307ef0e10f7e4d4e) )
 
-	EMPTY_TILEMAP_HIDATA(0x100000)
+	EMPTY_TILE_HIDATA(0x100000)
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
 	ROM_LOAD16_BYTE("d40_07.rom", 0x100000, 0x20000, CRC(7e9b26c2) SHA1(d88ad39a9d70b4a5bd3f83e0d4d0725f659f1d2a) )
@@ -820,11 +796,11 @@ ROM_START( gseekerj )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d40_05.rom", 0x000000, 0x100000, CRC(be6eec8f) SHA1(725e5e09f6ee60bd4c38fa223c4dea202c56f75f) )
 	ROM_LOAD32_WORD("d40_06.rom", 0x000002, 0x100000, CRC(a822abe4) SHA1(1a0dd9dcb8e24daab6eb1661307ef0e10f7e4d4e) )
 
-	EMPTY_TILEMAP_HIDATA(0x100000)
+	EMPTY_TILE_HIDATA(0x100000)
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
 	ROM_LOAD16_BYTE("d40_07.rom", 0x100000, 0x20000, CRC(7e9b26c2) SHA1(d88ad39a9d70b4a5bd3f83e0d4d0725f659f1d2a) )
@@ -856,11 +832,11 @@ ROM_START( gseekeru )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d40_05.rom", 0x000000, 0x100000, CRC(be6eec8f) SHA1(725e5e09f6ee60bd4c38fa223c4dea202c56f75f) )
 	ROM_LOAD32_WORD("d40_06.rom", 0x000002, 0x100000, CRC(a822abe4) SHA1(1a0dd9dcb8e24daab6eb1661307ef0e10f7e4d4e) )
 
-	EMPTY_TILEMAP_HIDATA(0x100000)
+	EMPTY_TILE_HIDATA(0x100000)
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
 	ROM_LOAD16_BYTE("d40_07.rom", 0x100000, 0x20000, CRC(7e9b26c2) SHA1(d88ad39a9d70b4a5bd3f83e0d4d0725f659f1d2a) )
@@ -892,11 +868,11 @@ ROM_START( commandw )
 	ROM_LOAD       ("cw_objh0.bin",  0x000000, 0x200000, CRC(83d7e0ae) SHA1(774a07d0cadc2c8f5ec155270bf927e4462654e2) )
 	ROM_LOAD       ("cw_objh1.bin",  0x200000, 0x200000, CRC(324f5832) SHA1(ff91243c5d09c4c46904640fe278a7485db70577) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("cw_scr_l.bin", 0x000000, 0x100000, CRC(4d202323) SHA1(0150bcba6d2bf2c3cde88bb519f57f3b58314244) )
 	ROM_LOAD32_WORD("cw_scr_m.bin", 0x000002, 0x100000, CRC(537b1c7d) SHA1(bc61aa61891366cbea4b8ecb820d93e28d01f8d2) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("cw_scr_h.bin", 0x000000, 0x100000, CRC(001f85dd) SHA1(2532377c0b54bc964ea4e74911ff62fea2d53975) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -925,11 +901,11 @@ ROM_START( cupfinal )
 	ROM_LOAD       ("d49-03.4",  0x000000, 0x200000, CRC(cf9a8727) SHA1(f21787fdcdd8be2009c2d481a9b2d7fc03ce782e) )
 	ROM_LOAD       ("d49-08.3",  0x200000, 0x100000, CRC(7d3c6536) SHA1(289b4bf79ebd9cbdf64ab956784d226e6d546654) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d49-09.47", 0x000000, 0x080000, CRC(257ede01) SHA1(c36397d95706c5e68a7738c84829a51c5e8f5ef7) )
 	ROM_LOAD32_WORD("d49-10.45", 0x000002, 0x080000, CRC(f587b787) SHA1(22db4904c134756ddd0f753f197419d27e60a827) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d49-11.43", 0x000000, 0x080000, CRC(11318b26) SHA1(a7153f9f406d52189f59cbe58d65f88f4e2e6fcc) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -959,11 +935,11 @@ ROM_START( hthero93 )
 	ROM_LOAD       ("d49-03.4",  0x000000, 0x200000, CRC(cf9a8727) SHA1(f21787fdcdd8be2009c2d481a9b2d7fc03ce782e) )
 	ROM_LOAD       ("d49-08.3",  0x200000, 0x100000, CRC(7d3c6536) SHA1(289b4bf79ebd9cbdf64ab956784d226e6d546654) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d49-09.47", 0x000000, 0x080000, CRC(257ede01) SHA1(c36397d95706c5e68a7738c84829a51c5e8f5ef7) )
 	ROM_LOAD32_WORD("d49-10.45", 0x000002, 0x080000, CRC(f587b787) SHA1(22db4904c134756ddd0f753f197419d27e60a827) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d49-11.43", 0x000000, 0x080000, CRC(11318b26) SHA1(a7153f9f406d52189f59cbe58d65f88f4e2e6fcc) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -993,11 +969,11 @@ ROM_START( hthero93u )
 	ROM_LOAD       ("d49-03.4",  0x000000, 0x200000, CRC(cf9a8727) SHA1(f21787fdcdd8be2009c2d481a9b2d7fc03ce782e) )
 	ROM_LOAD       ("d49-08.3",  0x200000, 0x100000, CRC(7d3c6536) SHA1(289b4bf79ebd9cbdf64ab956784d226e6d546654) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d49-09.47", 0x000000, 0x080000, CRC(257ede01) SHA1(c36397d95706c5e68a7738c84829a51c5e8f5ef7) )
 	ROM_LOAD32_WORD("d49-10.45", 0x000002, 0x080000, CRC(f587b787) SHA1(22db4904c134756ddd0f753f197419d27e60a827) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d49-11.43", 0x000000, 0x080000, CRC(11318b26) SHA1(a7153f9f406d52189f59cbe58d65f88f4e2e6fcc) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1042,11 +1018,11 @@ ROM_START( trstar )
 	ROM_LOAD       ("d53-05.47", 0x000000, 0x200000, CRC(b9b68b15) SHA1(c3783b09b22954a959188b80e537fa84d827ac47) )
 	ROM_LOAD       ("d53-08.66", 0x200000, 0x100000, CRC(ad13a1ee) SHA1(341112055b6bee33072c262f4ea7c4d0970888a6) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d53-09.48", 0x000000, 0x100000, CRC(690554d3) SHA1(113afd8fe7b77a30c2e3c5baca3f19d74902625b) )
 	ROM_LOAD32_WORD("d53-10.49", 0x000002, 0x100000, CRC(0ec05dc5) SHA1(781a6362ef963417fb6383a62dcc70d6f5b3131b) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d53-11.50", 0x000000, 0x100000, CRC(39c0a546) SHA1(53f03586f6586032fc3b4f90e987c1128edbb0a7) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1075,11 +1051,11 @@ ROM_START( trstarj )
 	ROM_LOAD       ("d53-05.47", 0x000000, 0x200000, CRC(b9b68b15) SHA1(c3783b09b22954a959188b80e537fa84d827ac47) )
 	ROM_LOAD       ("d53-08.66", 0x200000, 0x100000, CRC(ad13a1ee) SHA1(341112055b6bee33072c262f4ea7c4d0970888a6) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d53-09.48", 0x000000, 0x100000, CRC(690554d3) SHA1(113afd8fe7b77a30c2e3c5baca3f19d74902625b) )
 	ROM_LOAD32_WORD("d53-10.49", 0x000002, 0x100000, CRC(0ec05dc5) SHA1(781a6362ef963417fb6383a62dcc70d6f5b3131b) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d53-11.50", 0x000000, 0x100000, CRC(39c0a546) SHA1(53f03586f6586032fc3b4f90e987c1128edbb0a7) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1108,11 +1084,11 @@ ROM_START( prmtmfgt )
 	ROM_LOAD       ("d53-05.47", 0x000000, 0x200000, CRC(b9b68b15) SHA1(c3783b09b22954a959188b80e537fa84d827ac47) )
 	ROM_LOAD       ("d53-08.66", 0x200000, 0x100000, CRC(ad13a1ee) SHA1(341112055b6bee33072c262f4ea7c4d0970888a6) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d53-09.48", 0x000000, 0x100000, CRC(690554d3) SHA1(113afd8fe7b77a30c2e3c5baca3f19d74902625b) )
 	ROM_LOAD32_WORD("d53-10.49", 0x000002, 0x100000, CRC(0ec05dc5) SHA1(781a6362ef963417fb6383a62dcc70d6f5b3131b) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d53-11.50", 0x000000, 0x100000, CRC(39c0a546) SHA1(53f03586f6586032fc3b4f90e987c1128edbb0a7) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1141,11 +1117,11 @@ ROM_START( trstaro )
 	ROM_LOAD       ("d53-05.47", 0x000000, 0x200000, CRC(b9b68b15) SHA1(c3783b09b22954a959188b80e537fa84d827ac47) )
 	ROM_LOAD       ("d53-08.66", 0x200000, 0x100000, CRC(ad13a1ee) SHA1(341112055b6bee33072c262f4ea7c4d0970888a6) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d53-09.48", 0x000000, 0x100000, CRC(690554d3) SHA1(113afd8fe7b77a30c2e3c5baca3f19d74902625b) )
 	ROM_LOAD32_WORD("d53-10.49", 0x000002, 0x100000, CRC(0ec05dc5) SHA1(781a6362ef963417fb6383a62dcc70d6f5b3131b) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d53-11.50", 0x000000, 0x100000, CRC(39c0a546) SHA1(53f03586f6586032fc3b4f90e987c1128edbb0a7) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1174,11 +1150,11 @@ ROM_START( trstaroj )
 	ROM_LOAD       ("d53-05.47", 0x000000, 0x200000, CRC(b9b68b15) SHA1(c3783b09b22954a959188b80e537fa84d827ac47) )
 	ROM_LOAD       ("d53-08.66", 0x200000, 0x100000, CRC(ad13a1ee) SHA1(341112055b6bee33072c262f4ea7c4d0970888a6) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d53-09.48", 0x000000, 0x100000, CRC(690554d3) SHA1(113afd8fe7b77a30c2e3c5baca3f19d74902625b) )
 	ROM_LOAD32_WORD("d53-10.49", 0x000002, 0x100000, CRC(0ec05dc5) SHA1(781a6362ef963417fb6383a62dcc70d6f5b3131b) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d53-11.50", 0x000000, 0x100000, CRC(39c0a546) SHA1(53f03586f6586032fc3b4f90e987c1128edbb0a7) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1207,11 +1183,11 @@ ROM_START( prmtmfgto )
 	ROM_LOAD       ("d53-05.47", 0x000000, 0x200000, CRC(b9b68b15) SHA1(c3783b09b22954a959188b80e537fa84d827ac47) )
 	ROM_LOAD       ("d53-08.66", 0x200000, 0x100000, CRC(ad13a1ee) SHA1(341112055b6bee33072c262f4ea7c4d0970888a6) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d53-09.48", 0x000000, 0x100000, CRC(690554d3) SHA1(113afd8fe7b77a30c2e3c5baca3f19d74902625b) )
 	ROM_LOAD32_WORD("d53-10.49", 0x000002, 0x100000, CRC(0ec05dc5) SHA1(781a6362ef963417fb6383a62dcc70d6f5b3131b) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d53-11.50", 0x000000, 0x100000, CRC(39c0a546) SHA1(53f03586f6586032fc3b4f90e987c1128edbb0a7) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1237,11 +1213,11 @@ ROM_START( gunlock )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d66-05.ic47", 0x000000, 0x100000, CRC(a3cefe04) SHA1(dd4f47a814853f4512ce25c5f25121c53ee4ada1) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d66-06.ic48", 0x000000, 0x100000, CRC(b3d8126d) SHA1(3cbb44f396973c36abdf3fdf391becb22bb6d661) )
 	ROM_LOAD32_WORD("d66-07.ic49", 0x000002, 0x100000, CRC(a6da9be7) SHA1(b528505ab925db75acf31bfbed2035cbe36e7a74) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d66-08.ic50", 0x000000, 0x100000, CRC(9959f30b) SHA1(64bf2bf995c283c00d968e3c078b824de4084d3d) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 code */
@@ -1270,13 +1246,13 @@ ROM_START( gunlocko )
 	ROM_LOAD       ("lobj0-h.ic16", 0x000000, 0x080000, CRC(8899db2e) SHA1(6767e398f5c7df79b0dc2f97b3e7af407793dd37) )
 	ROM_LOAD       ("lobj1-h.ic15", 0x080000, 0x080000, CRC(0607fd85) SHA1(f9c7116a4185a45e041c8e8726a781e6de859fc7) )  // LOBJ0-H + LOBJ1-H == D66-05.IC47
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_BYTE("scr0-0.ic40", 0x000000, 0x080000, CRC(1c429d92) SHA1(71d2e2628e4ba5fdda34ed42c9d1c7c3df33b9aa) ) //  Odd bytes of D66-06.IC48
 	ROM_LOAD32_BYTE("scr0-1.ic46", 0x000001, 0x080000, CRC(5f0cb8bf) SHA1(6e50ebce5c2346de4101c1dace75e9d65d9e6add) ) // Even bytes of D66-06.IC48
 	ROM_LOAD32_BYTE("scr0-2.ic38", 0x000002, 0x080000, CRC(e023c0f0) SHA1(e73c3ea44a3e8fef110ea20b6a1e8102efd0b2a9) ) //  Odd bytes of D66-07.IC49
 	ROM_LOAD32_BYTE("scr0-3.ic44", 0x000003, 0x080000, CRC(37bbdbb9) SHA1(6ea2a36005494c45d38c44ddfc6236b2efb40962) ) // Even bytes of D66-07.IC49
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", ROMREGION_ERASE00 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", ROMREGION_ERASE00 )
 	ROM_LOAD16_BYTE("scr0-4.ic36", 0x000000, 0x080000, CRC(4f073d71) SHA1(9ac80922310fd9e7a0e59b5e1979c3cfa8cbf78b) ) // Even bytes of D66-08.IC50 (Odd bytes of D66-08.IC50 == 0xFF)
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 code */
@@ -1308,11 +1284,11 @@ ROM_START( rayforce )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d66-05.ic47", 0x000000, 0x100000, CRC(a3cefe04) SHA1(dd4f47a814853f4512ce25c5f25121c53ee4ada1) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d66-06.ic48", 0x000000, 0x100000, CRC(b3d8126d) SHA1(3cbb44f396973c36abdf3fdf391becb22bb6d661) )
 	ROM_LOAD32_WORD("d66-07.ic49", 0x000002, 0x100000, CRC(a6da9be7) SHA1(b528505ab925db75acf31bfbed2035cbe36e7a74) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d66-08.ic49", 0x000000, 0x100000, CRC(9959f30b) SHA1(64bf2bf995c283c00d968e3c078b824de4084d3d) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 code */
@@ -1338,11 +1314,11 @@ ROM_START( rayforcej )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d66-05.ic47", 0x000000, 0x100000, CRC(a3cefe04) SHA1(dd4f47a814853f4512ce25c5f25121c53ee4ada1) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d66-06.ic48", 0x000000, 0x100000, CRC(b3d8126d) SHA1(3cbb44f396973c36abdf3fdf391becb22bb6d661) )
 	ROM_LOAD32_WORD("d66-07.ic49", 0x000002, 0x100000, CRC(a6da9be7) SHA1(b528505ab925db75acf31bfbed2035cbe36e7a74) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d66-08.ic49", 0x000000, 0x100000, CRC(9959f30b) SHA1(64bf2bf995c283c00d968e3c078b824de4084d3d) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 code */
@@ -1371,11 +1347,11 @@ ROM_START( scfinals ) /* This is the single PCB version */
 	ROM_LOAD       ("d49-03.4",  0x000000, 0x200000, CRC(cf9a8727) SHA1(f21787fdcdd8be2009c2d481a9b2d7fc03ce782e) )
 	ROM_LOAD       ("d49-08.3",  0x200000, 0x100000, CRC(7d3c6536) SHA1(289b4bf79ebd9cbdf64ab956784d226e6d546654) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d49-09.47", 0x000000, 0x080000, CRC(257ede01) SHA1(c36397d95706c5e68a7738c84829a51c5e8f5ef7) ) /* Single PCB version locations may differ */
 	ROM_LOAD32_WORD("d49-10.45", 0x000002, 0x080000, CRC(f587b787) SHA1(22db4904c134756ddd0f753f197419d27e60a827) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d49-11.43", 0x000000, 0x080000, CRC(11318b26) SHA1(a7153f9f406d52189f59cbe58d65f88f4e2e6fcc) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1408,11 +1384,11 @@ ROM_START( scfinalso ) /* This is the single PCB version of v2.1O */
 	ROM_LOAD       ("d49-03.4",  0x000000, 0x200000, CRC(cf9a8727) SHA1(f21787fdcdd8be2009c2d481a9b2d7fc03ce782e) )
 	ROM_LOAD       ("d49-08.3",  0x200000, 0x100000, CRC(7d3c6536) SHA1(289b4bf79ebd9cbdf64ab956784d226e6d546654) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d49-09.47", 0x000000, 0x080000, CRC(257ede01) SHA1(c36397d95706c5e68a7738c84829a51c5e8f5ef7) )
 	ROM_LOAD32_WORD("d49-10.45", 0x000002, 0x080000, CRC(f587b787) SHA1(22db4904c134756ddd0f753f197419d27e60a827) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d49-11.43", 0x000000, 0x080000, CRC(11318b26) SHA1(a7153f9f406d52189f59cbe58d65f88f4e2e6fcc) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1445,11 +1421,11 @@ ROM_START( scfinalsoc ) /* This is the Cart version of v2.1O */
 	ROM_LOAD       ("d49-03.4",  0x000000, 0x200000, CRC(cf9a8727) SHA1(f21787fdcdd8be2009c2d481a9b2d7fc03ce782e) )
 	ROM_LOAD       ("d49-08.3",  0x200000, 0x100000, CRC(7d3c6536) SHA1(289b4bf79ebd9cbdf64ab956784d226e6d546654) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d49-09.47", 0x000000, 0x080000, CRC(257ede01) SHA1(c36397d95706c5e68a7738c84829a51c5e8f5ef7) )
 	ROM_LOAD32_WORD("d49-10.45", 0x000002, 0x080000, CRC(f587b787) SHA1(22db4904c134756ddd0f753f197419d27e60a827) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d49-11.43", 0x000000, 0x080000, CRC(11318b26) SHA1(a7153f9f406d52189f59cbe58d65f88f4e2e6fcc) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1482,11 +1458,11 @@ ROM_START( lightbr )
 	ROM_LOAD       ("d69-08.bin", 0x000000, 0x200000, CRC(5b68d7d8) SHA1(f2ee3dd7100a3c9d8f402fe36dae2bc66cb17be3) )
 	ROM_LOAD       ("d69-11.bin", 0x200000, 0x100000, CRC(c11adf92) SHA1(ee9ce49a43b419c4f44ac1aea8d0a12d7b289244) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d69-03.bin", 0x000000, 0x200000, CRC(6999c86f) SHA1(8a91930edfc0b5d23e59f8c3b43131db6edb4d37) )
 	ROM_LOAD32_WORD("d69-04.bin", 0x000002, 0x200000, CRC(cc91dcb7) SHA1(97f510b1e1a3adf49efe82babdd7abce3756ce4b) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d69-05.bin", 0x000000, 0x200000, CRC(f9f5433c) SHA1(d3de66385d883c72967c44bc29983d7a79f665d1) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1515,11 +1491,11 @@ ROM_START( dungeonm )
 	ROM_LOAD       ("d69-08.bin", 0x000000, 0x200000, CRC(5b68d7d8) SHA1(f2ee3dd7100a3c9d8f402fe36dae2bc66cb17be3) )
 	ROM_LOAD       ("d69-11.bin", 0x200000, 0x100000, CRC(c11adf92) SHA1(ee9ce49a43b419c4f44ac1aea8d0a12d7b289244) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d69-03.bin", 0x000000, 0x200000, CRC(6999c86f) SHA1(8a91930edfc0b5d23e59f8c3b43131db6edb4d37) )
 	ROM_LOAD32_WORD("d69-04.bin", 0x000002, 0x200000, CRC(cc91dcb7) SHA1(97f510b1e1a3adf49efe82babdd7abce3756ce4b) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d69-05.bin", 0x000000, 0x200000, CRC(f9f5433c) SHA1(d3de66385d883c72967c44bc29983d7a79f665d1) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1548,11 +1524,11 @@ ROM_START( dungeonmu )
 	ROM_LOAD       ("d69-08.bin", 0x000000, 0x200000, CRC(5b68d7d8) SHA1(f2ee3dd7100a3c9d8f402fe36dae2bc66cb17be3) )
 	ROM_LOAD       ("d69-11.bin", 0x200000, 0x100000, CRC(c11adf92) SHA1(ee9ce49a43b419c4f44ac1aea8d0a12d7b289244) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d69-03.bin", 0x000000, 0x200000, CRC(6999c86f) SHA1(8a91930edfc0b5d23e59f8c3b43131db6edb4d37) )
 	ROM_LOAD32_WORD("d69-04.bin", 0x000002, 0x200000, CRC(cc91dcb7) SHA1(97f510b1e1a3adf49efe82babdd7abce3756ce4b) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d69-05.bin", 0x000000, 0x200000, CRC(f9f5433c) SHA1(d3de66385d883c72967c44bc29983d7a79f665d1) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1641,11 +1617,11 @@ ROM_START( lightbrj )
 	ROM_LOAD       ("d69-08.bin", 0x000000, 0x200000, CRC(5b68d7d8) SHA1(f2ee3dd7100a3c9d8f402fe36dae2bc66cb17be3) )
 	ROM_LOAD       ("d69-11.bin", 0x200000, 0x100000, CRC(c11adf92) SHA1(ee9ce49a43b419c4f44ac1aea8d0a12d7b289244) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d69-03.bin", 0x000000, 0x200000, CRC(6999c86f) SHA1(8a91930edfc0b5d23e59f8c3b43131db6edb4d37) )
 	ROM_LOAD32_WORD("d69-04.bin", 0x000002, 0x200000, CRC(cc91dcb7) SHA1(97f510b1e1a3adf49efe82babdd7abce3756ce4b) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d69-05.bin", 0x000000, 0x200000, CRC(f9f5433c) SHA1(d3de66385d883c72967c44bc29983d7a79f665d1) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1674,11 +1650,11 @@ ROM_START( intcup94 )
 	ROM_LOAD       ("d49-03.4",  0x000000, 0x200000, CRC(cf9a8727) SHA1(f21787fdcdd8be2009c2d481a9b2d7fc03ce782e) )
 	ROM_LOAD       ("d49-08.3",  0x200000, 0x100000, CRC(7d3c6536) SHA1(289b4bf79ebd9cbdf64ab956784d226e6d546654) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d78-01.47", 0x000000, 0x080000, CRC(543f8967) SHA1(2efa935e7d0fd317bbbad2758a618d408a56317c) )
 	ROM_LOAD32_WORD("d78-02.45", 0x000002, 0x080000, CRC(e8289394) SHA1(b9957675f868f772943678b6a19fcc21dfd97a8d) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d78-03.43", 0x000000, 0x080000, CRC(a8bc36e5) SHA1(5777b9457292e8a9cbb4e8226ba939530ffab07c) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1708,11 +1684,11 @@ ROM_START( hthero94 )
 	ROM_LOAD       ("d49-03.4",  0x000000, 0x200000, CRC(cf9a8727) SHA1(f21787fdcdd8be2009c2d481a9b2d7fc03ce782e) )
 	ROM_LOAD       ("d49-08.3",  0x200000, 0x100000, CRC(7d3c6536) SHA1(289b4bf79ebd9cbdf64ab956784d226e6d546654) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d78-01.47", 0x000000, 0x080000, CRC(543f8967) SHA1(2efa935e7d0fd317bbbad2758a618d408a56317c) )
 	ROM_LOAD32_WORD("d78-02.45", 0x000002, 0x080000, CRC(e8289394) SHA1(b9957675f868f772943678b6a19fcc21dfd97a8d) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d78-03.43", 0x000000, 0x080000, CRC(a8bc36e5) SHA1(5777b9457292e8a9cbb4e8226ba939530ffab07c) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1738,11 +1714,11 @@ ROM_START( recalh )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("rh_scrl.bin", 0x000000, 0x100000, CRC(1e3f6b79) SHA1(fef029def6393a13f4a638686a7ec7c13851a5c0) )
 	ROM_LOAD32_WORD("rh_scrm.bin", 0x000002, 0x100000, CRC(37200968) SHA1(4a8d5a17af7eb732f481bf174099845e8d8d6b87) )
 
-	EMPTY_TILEMAP_HIDATA(0x100000)
+	EMPTY_TILE_HIDATA(0x100000)
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* sound CPU */
 	ROM_LOAD16_BYTE("rh_spr1.bin", 0x100000, 0x20000, CRC(504cbc1d) SHA1(35a775c1ebc8107c553e43b9d84eb735446c26fd) )
@@ -1780,13 +1756,13 @@ ROM_START( kaiserkn )
 	ROM_LOAD       ("d84-11.rom", 0x0400000, 0x200000, CRC(a062c1d4) SHA1(158912aa3dd75c3961bf738f9ac9034f0b005b60) )
 	ROM_LOAD       ("d84-21.rom", 0x0600000, 0x080000, CRC(89f68b66) SHA1(95916f02f71357324effe59da4f847f2f30ea34a) )
 
-	ROM_REGION( 0x600000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x600000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d84-12.rom", 0x000000, 0x200000, CRC(66a7a9aa) SHA1(a7d21f8b6370d16de3c1569019f2ad71d36e7a61) )
 	ROM_LOAD32_WORD("d84-13.rom", 0x000002, 0x200000, CRC(ae125516) SHA1(d54e76e398ab0b0fb82f3154ba54fc823ff49a1a) )
 	ROM_LOAD32_WORD("d84-16.rom", 0x400000, 0x100000, CRC(bcff9b2d) SHA1(0ca50ec809564eddf0ba7448a8fae9087d3b600b) )
 	ROM_LOAD32_WORD("d84-17.rom", 0x400002, 0x100000, CRC(0be37cc3) SHA1(b10c10b93858cad0c962ef614cfd6daea712ef6b) )
 
-	ROM_REGION( 0x300000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x300000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d84-14.rom", 0x000000, 0x200000, CRC(2b2e693e) SHA1(03eb37fa7dc68d54bf0f1800b8c0b581c344a40f) )
 	ROM_LOAD       ("d84-18.rom", 0x200000, 0x100000, CRC(e812bcc5) SHA1(3574e4a99232d9fc7989ec5d1e8fe76b4b30784a) )
 
@@ -1825,13 +1801,13 @@ ROM_START( kaiserknj )
 	ROM_LOAD       ("d84-11.rom", 0x0400000, 0x200000, CRC(a062c1d4) SHA1(158912aa3dd75c3961bf738f9ac9034f0b005b60) )
 	ROM_LOAD       ("d84-21.rom", 0x0600000, 0x080000, CRC(89f68b66) SHA1(95916f02f71357324effe59da4f847f2f30ea34a) )
 
-	ROM_REGION( 0x600000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x600000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d84-12.rom", 0x000000, 0x200000, CRC(66a7a9aa) SHA1(a7d21f8b6370d16de3c1569019f2ad71d36e7a61) )
 	ROM_LOAD32_WORD("d84-13.rom", 0x000002, 0x200000, CRC(ae125516) SHA1(d54e76e398ab0b0fb82f3154ba54fc823ff49a1a) )
 	ROM_LOAD32_WORD("d84-16.rom", 0x400000, 0x100000, CRC(bcff9b2d) SHA1(0ca50ec809564eddf0ba7448a8fae9087d3b600b) )
 	ROM_LOAD32_WORD("d84-17.rom", 0x400002, 0x100000, CRC(0be37cc3) SHA1(b10c10b93858cad0c962ef614cfd6daea712ef6b) )
 
-	ROM_REGION( 0x300000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x300000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d84-14.rom", 0x000000, 0x200000, CRC(2b2e693e) SHA1(03eb37fa7dc68d54bf0f1800b8c0b581c344a40f) )
 	ROM_LOAD       ("d84-18.rom", 0x200000, 0x100000, CRC(e812bcc5) SHA1(3574e4a99232d9fc7989ec5d1e8fe76b4b30784a) )
 
@@ -1870,13 +1846,13 @@ ROM_START( gblchmp )
 	ROM_LOAD       ("d84-11.rom", 0x0400000, 0x200000, CRC(a062c1d4) SHA1(158912aa3dd75c3961bf738f9ac9034f0b005b60) )
 	ROM_LOAD       ("d84-21.rom", 0x0600000, 0x080000, CRC(89f68b66) SHA1(95916f02f71357324effe59da4f847f2f30ea34a) )
 
-	ROM_REGION( 0x600000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x600000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d84-12.rom", 0x000000, 0x200000, CRC(66a7a9aa) SHA1(a7d21f8b6370d16de3c1569019f2ad71d36e7a61) )
 	ROM_LOAD32_WORD("d84-13.rom", 0x000002, 0x200000, CRC(ae125516) SHA1(d54e76e398ab0b0fb82f3154ba54fc823ff49a1a) )
 	ROM_LOAD32_WORD("d84-16.rom", 0x400000, 0x100000, CRC(bcff9b2d) SHA1(0ca50ec809564eddf0ba7448a8fae9087d3b600b) )
 	ROM_LOAD32_WORD("d84-17.rom", 0x400002, 0x100000, CRC(0be37cc3) SHA1(b10c10b93858cad0c962ef614cfd6daea712ef6b) )
 
-	ROM_REGION( 0x300000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x300000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d84-14.rom", 0x000000, 0x200000, CRC(2b2e693e) SHA1(03eb37fa7dc68d54bf0f1800b8c0b581c344a40f) )
 	ROM_LOAD       ("d84-18.rom", 0x200000, 0x100000, CRC(e812bcc5) SHA1(3574e4a99232d9fc7989ec5d1e8fe76b4b30784a) )
 
@@ -1915,13 +1891,13 @@ ROM_START( dankuga )
 	ROM_LOAD       ("d84-11.rom", 0x0400000, 0x200000, CRC(a062c1d4) SHA1(158912aa3dd75c3961bf738f9ac9034f0b005b60) )
 	ROM_LOAD       ("d84-21.rom", 0x0600000, 0x080000, CRC(89f68b66) SHA1(95916f02f71357324effe59da4f847f2f30ea34a) )
 
-	ROM_REGION( 0x600000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x600000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d84-12.rom", 0x000000, 0x200000, CRC(66a7a9aa) SHA1(a7d21f8b6370d16de3c1569019f2ad71d36e7a61) )
 	ROM_LOAD32_WORD("d84-13.rom", 0x000002, 0x200000, CRC(ae125516) SHA1(d54e76e398ab0b0fb82f3154ba54fc823ff49a1a) )
 	ROM_LOAD32_WORD("d84-16.rom", 0x400000, 0x100000, CRC(bcff9b2d) SHA1(0ca50ec809564eddf0ba7448a8fae9087d3b600b) )
 	ROM_LOAD32_WORD("d84-17.rom", 0x400002, 0x100000, CRC(0be37cc3) SHA1(b10c10b93858cad0c962ef614cfd6daea712ef6b) )
 
-	ROM_REGION( 0x300000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x300000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d84-14.rom", 0x000000, 0x200000, CRC(2b2e693e) SHA1(03eb37fa7dc68d54bf0f1800b8c0b581c344a40f) )
 	ROM_LOAD       ("d84-18.rom", 0x200000, 0x100000, CRC(e812bcc5) SHA1(3574e4a99232d9fc7989ec5d1e8fe76b4b30784a) )
 
@@ -1951,11 +1927,11 @@ ROM_START( dariusg )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d87-05.bin", 0x000000, 0x200000, CRC(4e5891a9) SHA1(fd08d848079841c9237fa359a850980fd00114d8) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d87-06.bin", 0x000000, 0x200000, CRC(3b97a07c) SHA1(72cdeffedeab0c1bd0e47f03172085390a2be393) )
 	ROM_LOAD32_WORD("d87-17.bin", 0x000002, 0x200000, CRC(e601d63e) SHA1(256a6aeb5633fe1db407fad567169a9d0c911219) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d87-08.bin", 0x000000, 0x200000, CRC(76d23602) SHA1(ca53ea6641182c44a4038bbeaa5effb1687f1980) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -1981,11 +1957,11 @@ ROM_START( dariusgj )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d87-05.bin", 0x000000, 0x200000, CRC(4e5891a9) SHA1(fd08d848079841c9237fa359a850980fd00114d8) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d87-06.bin", 0x000000, 0x200000, CRC(3b97a07c) SHA1(72cdeffedeab0c1bd0e47f03172085390a2be393) )
 	ROM_LOAD32_WORD("d87-17.bin", 0x000002, 0x200000, CRC(e601d63e) SHA1(256a6aeb5633fe1db407fad567169a9d0c911219) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d87-08.bin", 0x000000, 0x200000, CRC(76d23602) SHA1(ca53ea6641182c44a4038bbeaa5effb1687f1980) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2011,11 +1987,11 @@ ROM_START( dariusgu )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d87-05.bin", 0x000000, 0x200000, CRC(4e5891a9) SHA1(fd08d848079841c9237fa359a850980fd00114d8) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d87-06.bin", 0x000000, 0x200000, CRC(3b97a07c) SHA1(72cdeffedeab0c1bd0e47f03172085390a2be393) )
 	ROM_LOAD32_WORD("d87-17.bin", 0x000002, 0x200000, CRC(e601d63e) SHA1(256a6aeb5633fe1db407fad567169a9d0c911219) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d87-08.bin", 0x000000, 0x200000, CRC(76d23602) SHA1(ca53ea6641182c44a4038bbeaa5effb1687f1980) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2041,11 +2017,11 @@ ROM_START( dariusgx )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d87-05.bin", 0x000000, 0x200000, CRC(4e5891a9) SHA1(fd08d848079841c9237fa359a850980fd00114d8) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d87-06.bin", 0x000000, 0x200000, CRC(3b97a07c) SHA1(72cdeffedeab0c1bd0e47f03172085390a2be393) )
 	ROM_LOAD32_WORD("d87-17.bin", 0x000002, 0x200000, CRC(e601d63e) SHA1(256a6aeb5633fe1db407fad567169a9d0c911219) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d87-08.bin", 0x000000, 0x200000, CRC(76d23602) SHA1(ca53ea6641182c44a4038bbeaa5effb1687f1980) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2072,11 +2048,11 @@ ROM_START( bublbob2 )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d90-01", 0x000000, 0x100000, CRC(8aedb9e5) SHA1(fb49330f7985a829c9544ecfd0bc672494f29cf6) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d90-08", 0x000000, 0x100000, CRC(25a4fb2c) SHA1(c8bf6fe2291c05386b32cd26bfcb379da756d7b5) )
 	ROM_LOAD32_WORD("d90-07", 0x000002, 0x100000, CRC(b436b42d) SHA1(559827120273733147b260e0723054d926dbea5e) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d90-06", 0x000000, 0x100000, CRC(166a72b8) SHA1(7f70b8c960794322e1dc88e6600a2d13d948d873) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -2108,11 +2084,11 @@ ROM_START( bublbob2o )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d90-01", 0x000000, 0x100000, CRC(8aedb9e5) SHA1(fb49330f7985a829c9544ecfd0bc672494f29cf6) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d90-08", 0x000000, 0x100000, CRC(25a4fb2c) SHA1(c8bf6fe2291c05386b32cd26bfcb379da756d7b5) )
 	ROM_LOAD32_WORD("d90-07", 0x000002, 0x100000, CRC(b436b42d) SHA1(559827120273733147b260e0723054d926dbea5e) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d90-06", 0x000000, 0x100000, CRC(166a72b8) SHA1(7f70b8c960794322e1dc88e6600a2d13d948d873) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -2140,13 +2116,13 @@ ROM_START( bublbob2p )
 	ROM_REGION( 0x080000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("cq80-obj-0h-990d.ic32", 0x000000, 0x80000, CRC(4d3a78e0) SHA1(b19fb66e6082a68dc8600b8882ba50a3afce27c3) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_BYTE("cq80-scr0-5ba4.ic7", 0x000000, 0x080000, CRC(044dc38b) SHA1(0bb715c9ae8298c6852c6309d69f769e87ab2fdc) )
 	ROM_LOAD32_BYTE("cq80-scr1-a5f3.ic6", 0x000001, 0x080000, CRC(3cf3a3ba) SHA1(da7282104fbd9108bae12fa6722e077d80107d6d) )
 	ROM_LOAD32_BYTE("cq80-scr2-cc11.ic5", 0x000002, 0x080000, CRC(b81aa2c7) SHA1(4650c431dc2ed73f1e71337f3e7d4c1837b65bcf) )
 	ROM_LOAD32_BYTE("cq80-scr3-4266.ic4", 0x000003, 0x080000, CRC(c114583f) SHA1(ec85e8f4135e48607bb84b810d57d570ef56b228) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", ROMREGION_ERASE00 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", ROMREGION_ERASE00 )
 	ROM_LOAD16_BYTE("cq80-scr4-7fe1.ic3", 0x000000, 0x080000, CRC(2bba1728) SHA1(cdd2e651c233a185fcbb3fd8f5eabee2af30f781) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -2189,11 +2165,11 @@ ROM_START( bubsymphe )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d90-01", 0x000000, 0x100000, CRC(8aedb9e5) SHA1(fb49330f7985a829c9544ecfd0bc672494f29cf6) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d90-08", 0x000000, 0x100000, CRC(25a4fb2c) SHA1(c8bf6fe2291c05386b32cd26bfcb379da756d7b5) )
 	ROM_LOAD32_WORD("d90-07", 0x000002, 0x100000, CRC(b436b42d) SHA1(559827120273733147b260e0723054d926dbea5e) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d90-06", 0x000000, 0x100000, CRC(166a72b8) SHA1(7f70b8c960794322e1dc88e6600a2d13d948d873) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -2219,11 +2195,11 @@ ROM_START( bubsymphj )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d90-01", 0x000000, 0x100000, CRC(8aedb9e5) SHA1(fb49330f7985a829c9544ecfd0bc672494f29cf6) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d90-08", 0x000000, 0x100000, CRC(25a4fb2c) SHA1(c8bf6fe2291c05386b32cd26bfcb379da756d7b5) )
 	ROM_LOAD32_WORD("d90-07", 0x000002, 0x100000, CRC(b436b42d) SHA1(559827120273733147b260e0723054d926dbea5e) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d90-06", 0x000000, 0x100000, CRC(166a72b8) SHA1(7f70b8c960794322e1dc88e6600a2d13d948d873) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -2284,13 +2260,13 @@ ROM_START( bubsymphb )
 	ROM_LOAD16_WORD_SWAP("bsb_d17.bin", 0x200000, 0x080000, CRC(ea2eadfc) SHA1(2c4176e89f816166f410888cd2e837891a4289a3) )
 	ROM_LOAD16_WORD_SWAP("bsb_d16.bin", 0x280000, 0x080000, CRC(edccd4e0) SHA1(e00d3c1a91f9a96e1ae7d45842315d839c9cd440) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_BYTE("bsb_d15b.bin", 0x000000, 0x080000, CRC(74644ad4) SHA1(c7610e413c965eb4e40b548d13efdcbc3dde23be) )
 	ROM_LOAD32_BYTE("bsb_d14b.bin", 0x000001, 0x080000, CRC(c006e832) SHA1(4aebbac188af1ef9176581ac68ac12ce397f2f08) )
 	ROM_LOAD32_BYTE("bsb_d13b.bin", 0x000002, 0x080000, CRC(430af2aa) SHA1(e935f9f4e0558a25bd4010b44dbb4f38a9d359e0) )
 	ROM_LOAD32_BYTE("bsb_d12b.bin", 0x000003, 0x080000, CRC(cb2e2abb) SHA1(7e3a90cb8af298bac2aef80778341833e473b671) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("bsb_d11b.bin", 0x000000, 0x080000, CRC(d0607829) SHA1(546c629ec22bb98202c7127ccb77df0b8f3a1966) )
 
 	ROM_REGION( 0x100000, "oki" , ROMREGION_ERASE00 ) // OKI6295 samples
@@ -2312,13 +2288,13 @@ ROM_START( bubsymphba ) // extremely similar to bubsymphb (i.e. the only differe
 	ROM_LOAD16_WORD_SWAP( "7-27c4000.bin",  0x200000, 0x080000, CRC(c1c35f7b) SHA1(9e7c821d9f717c56f9cc32f724046a40cc5e336e) )
 	ROM_LOAD16_WORD_SWAP( "6-27c4000.bin",  0x280000, 0x080000, CRC(35a60e28) SHA1(29504c9c2308443aa0b2cd1cd489fcb95737821a) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0)
+	ROM_REGION( 0x200000, "fdp:tiles" , 0)
 	ROM_LOAD32_BYTE( "11-27c4000.bin", 0x000000, 0x080000, CRC(69f814b1) SHA1(9daaaff3652798006fa5432890bdc7c64fbb84c4) )
 	ROM_LOAD32_BYTE( "12-27c4000.bin", 0x000001, 0x080000, CRC(95add6ec) SHA1(5e33624921438bbf785313bd04b1860bd91097d3) )
 	ROM_LOAD32_BYTE( "13-27c4000.bin", 0x000002, 0x080000, CRC(5d87b202) SHA1(1625be0d8222388066694cd56c69b5768edd9513) )
 	ROM_LOAD32_BYTE( "14-27c4000.bin", 0x000003, 0x080000, CRC(8be51e5a) SHA1(69ea6c778eaea246bd763c93f087b6ae1ebf2e1e) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD( "15-27c4000.bin", 0x000000, 0x080000, CRC(45b3cf43) SHA1(f97684b69a56717b1e712dac1f8ff924d3775de0) )
 
 	ROM_REGION( 0x100000, "oki" , ROMREGION_ERASE00 )
@@ -2340,11 +2316,11 @@ ROM_START( bubsymphu )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("d90-01", 0x000000, 0x100000, CRC(8aedb9e5) SHA1(fb49330f7985a829c9544ecfd0bc672494f29cf6) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d90-08", 0x000000, 0x100000, CRC(25a4fb2c) SHA1(c8bf6fe2291c05386b32cd26bfcb379da756d7b5) )
 	ROM_LOAD32_WORD("d90-07", 0x000002, 0x100000, CRC(b436b42d) SHA1(559827120273733147b260e0723054d926dbea5e) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d90-06", 0x000000, 0x100000, CRC(166a72b8) SHA1(7f70b8c960794322e1dc88e6600a2d13d948d873) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* sound CPU */
@@ -2369,11 +2345,11 @@ ROM_START( spcinvdj )
 
 	EMPTY_SPRITE_HIDATA(0x080000)
 
-	ROM_REGION( 0x040000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x040000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d93-09.47", 0x000000, 0x20000, CRC(9076f663) SHA1(c94e93e40926df33b6bb528e0ef30381631913d7) )
 	ROM_LOAD32_WORD("d93-10.45", 0x000002, 0x20000, CRC(8a3f531b) SHA1(69f9971c45971018108a5d312d5bbcfd3caf9bd0) )
 
-	EMPTY_TILEMAP_HIDATA(0x020000)
+	EMPTY_TILE_HIDATA(0x020000)
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
 	ROM_LOAD16_BYTE("d93-05.bin", 0x100000, 0x20000, CRC(ff365596) SHA1(4cf2e0d6f42cf3fb69796be6092eff8a47f7f8b9) )
@@ -2406,11 +2382,11 @@ ROM_START( pwrgoal )
 	ROM_LOAD       ("d94-02.bin", 0x0200000, 0x200000, CRC(f460b9ac) SHA1(e36a812791bd0360380f397b1bc6c357391f585a) )
 	ROM_LOAD       ("d94-01.bin", 0x0400000, 0x200000, CRC(410ffccd) SHA1(0cab00c8e9de92ad81ac61f25bbe8bfd60f45ae0) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d94-14.bin", 0x000000, 0x100000, CRC(b8ba5761) SHA1(7966ef3166d7d6b9913478eaef5dd4a2bf7d5a06) )
 	ROM_LOAD32_WORD("d94-13.bin", 0x000002, 0x100000, CRC(cafc68ce) SHA1(5c1f49951e83d812f0c7697751f4876ab1d08141) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d94-12.bin", 0x000000, 0x100000, CRC(47064189) SHA1(99ceeb326dcc2e1c3acba8ac14d94dcb17c6e032) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2442,11 +2418,11 @@ ROM_START( hthero95 )
 	ROM_LOAD       ("d94-02.bin", 0x0200000, 0x200000, CRC(f460b9ac) SHA1(e36a812791bd0360380f397b1bc6c357391f585a) )
 	ROM_LOAD       ("d94-01.bin", 0x0400000, 0x200000, CRC(410ffccd) SHA1(0cab00c8e9de92ad81ac61f25bbe8bfd60f45ae0) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d94-14.bin", 0x000000, 0x100000, CRC(b8ba5761) SHA1(7966ef3166d7d6b9913478eaef5dd4a2bf7d5a06) )
 	ROM_LOAD32_WORD("d94-13.bin", 0x000002, 0x100000, CRC(cafc68ce) SHA1(5c1f49951e83d812f0c7697751f4876ab1d08141) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d94-12.bin", 0x000000, 0x100000, CRC(47064189) SHA1(99ceeb326dcc2e1c3acba8ac14d94dcb17c6e032) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2478,11 +2454,11 @@ ROM_START( hthero95u )
 	ROM_LOAD       ("d94-02.bin", 0x0200000, 0x200000, CRC(f460b9ac) SHA1(e36a812791bd0360380f397b1bc6c357391f585a) )
 	ROM_LOAD       ("d94-01.bin", 0x0400000, 0x200000, CRC(410ffccd) SHA1(0cab00c8e9de92ad81ac61f25bbe8bfd60f45ae0) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d94-14.bin", 0x000000, 0x100000, CRC(b8ba5761) SHA1(7966ef3166d7d6b9913478eaef5dd4a2bf7d5a06) )
 	ROM_LOAD32_WORD("d94-13.bin", 0x000002, 0x100000, CRC(cafc68ce) SHA1(5c1f49951e83d812f0c7697751f4876ab1d08141) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d94-12.bin", 0x000000, 0x100000, CRC(47064189) SHA1(99ceeb326dcc2e1c3acba8ac14d94dcb17c6e032) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2514,11 +2490,11 @@ ROM_START( hthero95a )
 	ROM_LOAD       ("d94-02.bin", 0x0200000, 0x200000, CRC(f460b9ac) SHA1(e36a812791bd0360380f397b1bc6c357391f585a) )
 	ROM_LOAD       ("d94-01.bin", 0x0400000, 0x200000, CRC(410ffccd) SHA1(0cab00c8e9de92ad81ac61f25bbe8bfd60f45ae0) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d94-14.bin", 0x000000, 0x100000, CRC(b8ba5761) SHA1(7966ef3166d7d6b9913478eaef5dd4a2bf7d5a06) )
 	ROM_LOAD32_WORD("d94-13.bin", 0x000002, 0x100000, CRC(cafc68ce) SHA1(5c1f49951e83d812f0c7697751f4876ab1d08141) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("d94-12.bin", 0x000000, 0x100000, CRC(47064189) SHA1(99ceeb326dcc2e1c3acba8ac14d94dcb17c6e032) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2543,11 +2519,11 @@ ROM_START( qtheater )
 
 	EMPTY_SPRITE_HIDATA(0x200000)
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("d95-06.47", 0x000000, 0x200000, CRC(70a0dcbb) SHA1(b1abe6a9a4afe55201229a62bae11ad1d96ca244) )
 	ROM_LOAD32_WORD("d95-05.45", 0x000002, 0x200000, CRC(1a1a852b) SHA1(89827485a31af4e2457775a5d16f747a764b6d67) )
 
-	EMPTY_TILEMAP_HIDATA(0x200000)
+	EMPTY_TILE_HIDATA(0x200000)
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
 	ROM_LOAD16_BYTE("d95-07.32", 0x100000, 0x40000, CRC(3c201d70) SHA1(89fe4d363f4e1a847ba7d2894a2092708b287a33) )
@@ -2572,11 +2548,11 @@ ROM_START( spcinv95u )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e06-01", 0x000000, 0x100000, CRC(51721b15) SHA1(448a9a7f3631072d8987351f5c0b8dd2c908d266) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e06-08", 0x000000, 0x100000, CRC(72ae2fbf) SHA1(7fa7ec94a8031342a2446fb8eca0d89ecfd2fa4f) )
 	ROM_LOAD32_WORD("e06-07", 0x000002, 0x100000, CRC(4b02e8f5) SHA1(02d8a97da52f9ba4033b8f0c3f455a908a9dce89) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e06-06", 0x000000, 0x100000, CRC(9380db3c) SHA1(83f5a46a01b9c15499e0dc2222df496d26baa0d4) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2609,11 +2585,11 @@ ROM_START( spcinv95 )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e06-01", 0x000000, 0x100000, CRC(51721b15) SHA1(448a9a7f3631072d8987351f5c0b8dd2c908d266) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e06-08", 0x000000, 0x100000, CRC(72ae2fbf) SHA1(7fa7ec94a8031342a2446fb8eca0d89ecfd2fa4f) )
 	ROM_LOAD32_WORD("e06-07", 0x000002, 0x100000, CRC(4b02e8f5) SHA1(02d8a97da52f9ba4033b8f0c3f455a908a9dce89) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e06-06", 0x000000, 0x100000, CRC(9380db3c) SHA1(83f5a46a01b9c15499e0dc2222df496d26baa0d4) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2646,11 +2622,11 @@ ROM_START( akkanvdr )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e06-01", 0x000000, 0x100000, CRC(51721b15) SHA1(448a9a7f3631072d8987351f5c0b8dd2c908d266) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e06-08", 0x000000, 0x100000, CRC(72ae2fbf) SHA1(7fa7ec94a8031342a2446fb8eca0d89ecfd2fa4f) )
 	ROM_LOAD32_WORD("e06-07", 0x000002, 0x100000, CRC(4b02e8f5) SHA1(02d8a97da52f9ba4033b8f0c3f455a908a9dce89) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e06-06", 0x000000, 0x100000, CRC(9380db3c) SHA1(83f5a46a01b9c15499e0dc2222df496d26baa0d4) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2761,11 +2737,11 @@ ROM_START( elvactr )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e02-01.4",  0x000000, 0x200000, CRC(2ba94726) SHA1(3e9cdd076338e0e5358571ce4f97576f1a6a12a7) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap", 0 ) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles", 0 ) /* Tiles */
 	ROM_LOAD32_WORD("e02-08.47", 0x000000, 0x200000, CRC(29c9bd02) SHA1(a5b552ae7ac15f514ee6105410ec3e6e34ea0adb) )
 	ROM_LOAD32_WORD("e02-07.45", 0x000002, 0x200000, CRC(5eeee925) SHA1(d302da28df8ac6d406ef45f1d282ee22ce243857) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e02-06.43", 0x000000, 0x200000, CRC(4c8726e9) SHA1(8ce2320a087f43c49428a39dafffec8c40d61b03) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2800,11 +2776,11 @@ ROM_START( elvactrj )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e02-01.4",  0x000000, 0x200000, CRC(2ba94726) SHA1(3e9cdd076338e0e5358571ce4f97576f1a6a12a7) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap", 0 ) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles", 0 ) /* Tiles */
 	ROM_LOAD32_WORD("e02-08.47", 0x000000, 0x200000, CRC(29c9bd02) SHA1(a5b552ae7ac15f514ee6105410ec3e6e34ea0adb) )
 	ROM_LOAD32_WORD("e02-07.45", 0x000002, 0x200000, CRC(5eeee925) SHA1(d302da28df8ac6d406ef45f1d282ee22ce243857) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e02-06.43", 0x000000, 0x200000, CRC(4c8726e9) SHA1(8ce2320a087f43c49428a39dafffec8c40d61b03) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2830,11 +2806,11 @@ ROM_START( elvact2u )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e02-01.4",  0x000000, 0x200000, CRC(2ba94726) SHA1(3e9cdd076338e0e5358571ce4f97576f1a6a12a7) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap", 0 ) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles", 0 ) /* Tiles */
 	ROM_LOAD32_WORD("e02-08.47", 0x000000, 0x200000, CRC(29c9bd02) SHA1(a5b552ae7ac15f514ee6105410ec3e6e34ea0adb) )
 	ROM_LOAD32_WORD("e02-07.45", 0x000002, 0x200000, CRC(5eeee925) SHA1(d302da28df8ac6d406ef45f1d282ee22ce243857) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e02-06.43", 0x000000, 0x200000, CRC(4c8726e9) SHA1(8ce2320a087f43c49428a39dafffec8c40d61b03) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2859,13 +2835,13 @@ ROM_START( twinqix )
 
 	EMPTY_SPRITE_HIDATA(0x080000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0 ) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0 ) /* Tiles */
 	ROM_LOAD32_BYTE("scr0-0.b07",  0x000000, 0x080000, CRC(9a1b9b34) SHA1(ddf9c6ba0f9c340b580573e1d96ac76b1cd35beb) )
 	ROM_LOAD32_BYTE("scr0-1.b06",  0x000001, 0x080000, CRC(e9bef879) SHA1(7e720f5054a1ef3a28353f1c221f4cf15d3b7428) )
 	ROM_LOAD32_BYTE("scr0-2.b05",  0x000002, 0x080000, CRC(cac6854b) SHA1(c97fb7de48e1644695bbe431587d6c1be01ea62d) )
 	ROM_LOAD32_BYTE("scr0-3.b04",  0x000003, 0x080000, CRC(ce063034) SHA1(2ecff74427d7d2fa8d1db4ac87481d123d7ce003) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD16_BYTE("scr0-4.b03",  0x000000, 0x080000, CRC(d32280fe) SHA1(56b120128c5e4b8c6598a1de51269e6702a63175) )
 	ROM_LOAD16_BYTE("scr0-5.b02",  0x000001, 0x080000, CRC(fdd1a85b) SHA1(1d94a4858baef3e78c456049dc58249a574205fe) )
 
@@ -2906,11 +2882,11 @@ ROM_START( quizhuhu )
 	ROM_LOAD       ("e08-02.4",  0x000000, 0x200000, CRC(d89eb067) SHA1(bd8e1cf4c2046894c629d927fa05806b9b73505d) )
 	ROM_LOAD       ("e08-01.3",  0x200000, 0x100000, CRC(90223c06) SHA1(f07dae563946908d471ae89db74a2e55c5ab5890) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e08-12.47", 0x000000, 0x100000, CRC(6c711d36) SHA1(3fbff7783323d968ade72ac53531a7bcf7b9d234) )
 	ROM_LOAD32_WORD("e08-11.45", 0x000002, 0x100000, CRC(56775a60) SHA1(8bb8190101f2e8487ebb707022ff89d97bb7b39a) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e08-10.43", 0x000000, 0x100000, CRC(60abc71b) SHA1(f4aa906920c6134c33a4dfb51724f3adbd3d7de4) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2938,11 +2914,11 @@ ROM_START( pbobble2 )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e10-07.rom", 0x000000, 0x100000, CRC(dcb3c29b) SHA1(b80c3a8ce53d696c57675e654c9927ef8687759e) )
 	ROM_LOAD32_WORD("e10-06.rom", 0x000002, 0x100000, CRC(1b0f20e2) SHA1(66b44d059c2896abac2f0e7fc932489dee440ba0) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e10-05.rom", 0x000000, 0x100000, CRC(81266151) SHA1(aa3b144f32995425db97efce440e234a3c7a6715) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -2972,11 +2948,11 @@ ROM_START( pbobble2o )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e10-07.rom", 0x000000, 0x100000, CRC(dcb3c29b) SHA1(b80c3a8ce53d696c57675e654c9927ef8687759e) )
 	ROM_LOAD32_WORD("e10-06.rom", 0x000002, 0x100000, CRC(1b0f20e2) SHA1(66b44d059c2896abac2f0e7fc932489dee440ba0) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e10-05.rom", 0x000000, 0x100000, CRC(81266151) SHA1(aa3b144f32995425db97efce440e234a3c7a6715) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -3001,11 +2977,11 @@ ROM_START( pbobble2j )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e10-07.rom", 0x000000, 0x100000, CRC(dcb3c29b) SHA1(b80c3a8ce53d696c57675e654c9927ef8687759e) )
 	ROM_LOAD32_WORD("e10-06.rom", 0x000002, 0x100000, CRC(1b0f20e2) SHA1(66b44d059c2896abac2f0e7fc932489dee440ba0) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e10-05.rom", 0x000000, 0x100000, CRC(81266151) SHA1(aa3b144f32995425db97efce440e234a3c7a6715) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -3030,11 +3006,11 @@ ROM_START( pbobble2u )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e10-07.rom", 0x000000, 0x100000, CRC(dcb3c29b) SHA1(b80c3a8ce53d696c57675e654c9927ef8687759e) )
 	ROM_LOAD32_WORD("e10-06.rom", 0x000002, 0x100000, CRC(1b0f20e2) SHA1(66b44d059c2896abac2f0e7fc932489dee440ba0) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e10-05.rom", 0x000000, 0x100000, CRC(81266151) SHA1(aa3b144f32995425db97efce440e234a3c7a6715) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -3059,11 +3035,11 @@ ROM_START( pbobble2x )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e10-07.rom", 0x000000, 0x100000, CRC(dcb3c29b) SHA1(b80c3a8ce53d696c57675e654c9927ef8687759e) )
 	ROM_LOAD32_WORD("e10-06.rom", 0x000002, 0x100000, CRC(1b0f20e2) SHA1(66b44d059c2896abac2f0e7fc932489dee440ba0) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e10-05.rom", 0x000000, 0x100000, CRC(81266151) SHA1(aa3b144f32995425db97efce440e234a3c7a6715) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -3096,11 +3072,11 @@ ROM_START( gekiridn )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e11-01.ic4",  0x000000, 0x200000, CRC(c2cd1069) SHA1(9744dd3d8a6d9200cea4429dafce5620b60e2960) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e11-08.ic47", 0x000000, 0x200000, CRC(907f69d3) SHA1(0899ed58edcae22144625c349c9d2fe4d46d11e3) )
 	ROM_LOAD32_WORD("e11-07.ic45", 0x000002, 0x200000, CRC(ef018607) SHA1(61b602b13754c3be21caf76acbfc10c87518ba47) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e11-06.ic43", 0x000000, 0x200000, CRC(200ce305) SHA1(c80a0b96510913a6411e6763fb72bf413fb792da) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -3126,11 +3102,11 @@ ROM_START( gekiridnj )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e11-01.ic4",  0x000000, 0x200000, CRC(c2cd1069) SHA1(9744dd3d8a6d9200cea4429dafce5620b60e2960) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e11-08.ic47", 0x000000, 0x200000, CRC(907f69d3) SHA1(0899ed58edcae22144625c349c9d2fe4d46d11e3) )
 	ROM_LOAD32_WORD("e11-07.ic45", 0x000002, 0x200000, CRC(ef018607) SHA1(61b602b13754c3be21caf76acbfc10c87518ba47) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e11-06.ic43", 0x000000, 0x200000, CRC(200ce305) SHA1(c80a0b96510913a6411e6763fb72bf413fb792da) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -3161,13 +3137,13 @@ ROM_START( tcobra2 )
 
 	EMPTY_SPRITE_HIDATA(0x300000)
 
-	ROM_REGION( 0x600000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x600000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e15-10.ic47", 0x000000, 0x200000, CRC(d8c96b00) SHA1(9cd275abb66b3475433ea2649dc872d7d35eb5b8) )
 	ROM_LOAD32_WORD("e15-08.ic45", 0x000002, 0x200000, CRC(4bdb2bf3) SHA1(1146b7a5d9f26d3173a7c64768e55d53a0ab7b8e) )
 	ROM_LOAD32_WORD("e15-09.ic46", 0x400000, 0x100000, CRC(07c29f60) SHA1(3ca0f632e7047cc50ee3ce24cd6c0c8c7252a278) )
 	ROM_LOAD32_WORD("e15-07.ic44", 0x400002, 0x100000, CRC(8164f7ee) SHA1(4550521f820e93ec08b86d148135966d016cbf22) )
 
-	EMPTY_TILEMAP_HIDATA(0x300000)
+	EMPTY_TILE_HIDATA(0x300000)
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
 	ROM_LOAD16_BYTE("e15-15.ic32", 0x100000, 0x20000, CRC(22126dfb) SHA1(a1af17e5c3440f1bab50d79f92c251f1a4536ca0) )
@@ -3200,13 +3176,13 @@ ROM_START( tcobra2u )
 
 	EMPTY_SPRITE_HIDATA(0x300000)
 
-	ROM_REGION( 0x600000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x600000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e15-10.ic47", 0x000000, 0x200000, CRC(d8c96b00) SHA1(9cd275abb66b3475433ea2649dc872d7d35eb5b8) )
 	ROM_LOAD32_WORD("e15-08.ic45", 0x000002, 0x200000, CRC(4bdb2bf3) SHA1(1146b7a5d9f26d3173a7c64768e55d53a0ab7b8e) )
 	ROM_LOAD32_WORD("e15-09.ic46", 0x400000, 0x100000, CRC(07c29f60) SHA1(3ca0f632e7047cc50ee3ce24cd6c0c8c7252a278) )
 	ROM_LOAD32_WORD("e15-07.ic44", 0x400002, 0x100000, CRC(8164f7ee) SHA1(4550521f820e93ec08b86d148135966d016cbf22) )
 
-	EMPTY_TILEMAP_HIDATA(0x300000)
+	EMPTY_TILE_HIDATA(0x300000)
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
 	ROM_LOAD16_BYTE("e15-15.ic32", 0x100000, 0x20000, CRC(22126dfb) SHA1(a1af17e5c3440f1bab50d79f92c251f1a4536ca0) )
@@ -3239,13 +3215,13 @@ ROM_START( ktiger2 )
 
 	EMPTY_SPRITE_HIDATA(0x300000)
 
-	ROM_REGION( 0x600000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x600000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e15-10.ic47", 0x000000, 0x200000, CRC(d8c96b00) SHA1(9cd275abb66b3475433ea2649dc872d7d35eb5b8) )
 	ROM_LOAD32_WORD("e15-08.ic45", 0x000002, 0x200000, CRC(4bdb2bf3) SHA1(1146b7a5d9f26d3173a7c64768e55d53a0ab7b8e) )
 	ROM_LOAD32_WORD("e15-09.ic46", 0x400000, 0x100000, CRC(07c29f60) SHA1(3ca0f632e7047cc50ee3ce24cd6c0c8c7252a278) )
 	ROM_LOAD32_WORD("e15-07.ic44", 0x400002, 0x100000, CRC(8164f7ee) SHA1(4550521f820e93ec08b86d148135966d016cbf22) )
 
-	EMPTY_TILEMAP_HIDATA(0x300000)
+	EMPTY_TILE_HIDATA(0x300000)
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
 	ROM_LOAD16_BYTE("e15-15.ic32", 0x100000, 0x20000, CRC(22126dfb) SHA1(a1af17e5c3440f1bab50d79f92c251f1a4536ca0) )
@@ -3276,11 +3252,11 @@ ROM_START( bubblem )
 
 	EMPTY_SPRITE_HIDATA(0x200000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e21-07.rom", 0x000000, 0x100000, CRC(7789bf7c) SHA1(bc8ef1696adac99a1fabae9b79afcd3461cf323b) )
 	ROM_LOAD32_WORD("e21-06.rom", 0x000002, 0x100000, CRC(997fc0d7) SHA1(58a546f739072fedebfe7c972fe85f72107726b2) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e21-05.rom", 0x000000, 0x100000, CRC(07eab58f) SHA1(ae2d7b839b39d88d11652df74804a39230674467) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* Sound CPU */
@@ -3308,11 +3284,11 @@ ROM_START( bubblemu )
 
 	EMPTY_SPRITE_HIDATA(0x200000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e21-07.rom", 0x000000, 0x100000, CRC(7789bf7c) SHA1(bc8ef1696adac99a1fabae9b79afcd3461cf323b) )
 	ROM_LOAD32_WORD("e21-06.rom", 0x000002, 0x100000, CRC(997fc0d7) SHA1(58a546f739072fedebfe7c972fe85f72107726b2) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e21-05.rom", 0x000000, 0x100000, CRC(07eab58f) SHA1(ae2d7b839b39d88d11652df74804a39230674467) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* Sound CPU */
@@ -3340,11 +3316,11 @@ ROM_START( bubblemj )
 
 	EMPTY_SPRITE_HIDATA(0x200000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e21-07.rom", 0x000000, 0x100000, CRC(7789bf7c) SHA1(bc8ef1696adac99a1fabae9b79afcd3461cf323b) )
 	ROM_LOAD32_WORD("e21-06.rom", 0x000002, 0x100000, CRC(997fc0d7) SHA1(58a546f739072fedebfe7c972fe85f72107726b2) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e21-05.rom", 0x000000, 0x100000, CRC(07eab58f) SHA1(ae2d7b839b39d88d11652df74804a39230674467) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* Sound CPU */
@@ -3372,11 +3348,11 @@ ROM_START( cleopatr )
 
 	EMPTY_SPRITE_HIDATA(0x080000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e28-06.bin", 0x000000, 0x100000, CRC(21d0c454) SHA1(f4c815984b19321cfab303fa6f21d9cad35b09f2) )
 	ROM_LOAD32_WORD("e28-05.bin", 0x000002, 0x100000, CRC(2870dbbc) SHA1(4e412b90cbd9a05956cde3d8cff615ebadca9db6) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e28-04.bin", 0x000000, 0x100000, CRC(57aef029) SHA1(5c07209015d4749d1ffb3e9c1a890e6cfeec8cb0) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* Sound CPU */
@@ -3412,11 +3388,11 @@ ROM_START( cleopatro )
 
 	EMPTY_SPRITE_HIDATA(0x080000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e28-06.bin", 0x000000, 0x100000, CRC(21d0c454) SHA1(f4c815984b19321cfab303fa6f21d9cad35b09f2) )
 	ROM_LOAD32_WORD("e28-05.bin", 0x000002, 0x100000, CRC(2870dbbc) SHA1(4e412b90cbd9a05956cde3d8cff615ebadca9db6) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e28-04.bin", 0x000000, 0x100000, CRC(57aef029) SHA1(5c07209015d4749d1ffb3e9c1a890e6cfeec8cb0) )
 
 	ROM_REGION( 0x140000, "taito_en:audiocpu", 0 ) /* Sound CPU */
@@ -3440,11 +3416,11 @@ ROM_START( pbobble3 )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0 ) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0 ) /* Tiles */
 	ROM_LOAD32_WORD("e29-08.rom", 0x000000, 0x100000, CRC(7040a3d5) SHA1(ea284ec530aac20348f84122e38a508bbc283f44) )
 	ROM_LOAD32_WORD("e29-07.rom", 0x000002, 0x100000, CRC(fca2ea9b) SHA1(a87ebedd0d16657288df434a70b8933fafe0ca25) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e29-06.rom", 0x000000, 0x100000, CRC(c16184f8) SHA1(ded417d9d116b5a2f7518fa404bc2dda1c6a6366) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 code */
@@ -3471,11 +3447,11 @@ ROM_START( pbobble3u )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0 ) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0 ) /* Tiles */
 	ROM_LOAD32_WORD("e29-08.rom", 0x000000, 0x100000, CRC(7040a3d5) SHA1(ea284ec530aac20348f84122e38a508bbc283f44) )
 	ROM_LOAD32_WORD("e29-07.rom", 0x000002, 0x100000, CRC(fca2ea9b) SHA1(a87ebedd0d16657288df434a70b8933fafe0ca25) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e29-06.rom", 0x000000, 0x100000, CRC(c16184f8) SHA1(ded417d9d116b5a2f7518fa404bc2dda1c6a6366) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 code */
@@ -3502,11 +3478,11 @@ ROM_START( pbobble3j )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0 ) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0 ) /* Tiles */
 	ROM_LOAD32_WORD("e29-08.ic47", 0x000000, 0x100000, CRC(7040a3d5) SHA1(ea284ec530aac20348f84122e38a508bbc283f44) )
 	ROM_LOAD32_WORD("e29-07.ic45", 0x000002, 0x100000, CRC(fca2ea9b) SHA1(a87ebedd0d16657288df434a70b8933fafe0ca25) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e29-06.ic43", 0x000000, 0x100000, CRC(c16184f8) SHA1(ded417d9d116b5a2f7518fa404bc2dda1c6a6366) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 code */
@@ -3545,11 +3521,11 @@ ROM_START( arkretrn )
 	ROM_REGION( 0x040000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e36-01.4",  0x000000, 0x040000, CRC(54b9b2cd) SHA1(55ae964ea1d2cc40a6578c5339754a270096f01f) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e36-07.47", 0x000000, 0x080000, CRC(266bf1c1) SHA1(489549478d7016400af2e643d4b98bf605237d34) )
 	ROM_LOAD32_WORD("e36-06.45", 0x000002, 0x080000, CRC(110ab729) SHA1(0ccc0a5abbcfd79a069daf5162cd344a5fb225d5) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e36-05.43", 0x000000, 0x080000, CRC(db18bce2) SHA1(b6653facc7f5c624f5710a51f2b2abfe640177e2) )
 
 	ROM_REGION16_BE( 0x400000, "taito_en:ensoniq", ROMREGION_ERASE00 ) // V2: 4 banks, only 1 populated
@@ -3581,11 +3557,11 @@ ROM_START( arkretrnu )
 	ROM_REGION( 0x040000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e36-01.4",  0x000000, 0x040000, CRC(54b9b2cd) SHA1(55ae964ea1d2cc40a6578c5339754a270096f01f) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e36-07.47", 0x000000, 0x080000, CRC(266bf1c1) SHA1(489549478d7016400af2e643d4b98bf605237d34) )
 	ROM_LOAD32_WORD("e36-06.45", 0x000002, 0x080000, CRC(110ab729) SHA1(0ccc0a5abbcfd79a069daf5162cd344a5fb225d5) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e36-05.43", 0x000000, 0x080000, CRC(db18bce2) SHA1(b6653facc7f5c624f5710a51f2b2abfe640177e2) )
 
 	ROM_REGION16_BE( 0x400000, "taito_en:ensoniq", ROMREGION_ERASE00 ) // V2: 4 banks, only 1 populated
@@ -3617,11 +3593,11 @@ ROM_START( arkretrnj )
 	ROM_REGION( 0x040000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e36-01.4",  0x000000, 0x040000, CRC(54b9b2cd) SHA1(55ae964ea1d2cc40a6578c5339754a270096f01f) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x100000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e36-07.47", 0x000000, 0x080000, CRC(266bf1c1) SHA1(489549478d7016400af2e643d4b98bf605237d34) )
 	ROM_LOAD32_WORD("e36-06.45", 0x000002, 0x080000, CRC(110ab729) SHA1(0ccc0a5abbcfd79a069daf5162cd344a5fb225d5) )
 
-	ROM_REGION( 0x080000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x080000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e36-05.43", 0x000000, 0x080000, CRC(db18bce2) SHA1(b6653facc7f5c624f5710a51f2b2abfe640177e2) )
 
 	ROM_REGION16_BE( 0x400000, "taito_en:ensoniq", ROMREGION_ERASE00 ) // V2: 4 banks, only 1 populated
@@ -3652,13 +3628,13 @@ ROM_START( kirameki )
 	ROM_LOAD       ("e44-02.4",  0x0000000, 0x400000, CRC(5481efde) SHA1(560a1b8acf672781e912dca51599b5aa4d69520a) )
 	ROM_LOAD       ("e44-01.3",  0x0400000, 0x200000, CRC(c4bdf727) SHA1(793a22a30ef44db818cfac96ff8e9d2f99cb672f) )
 
-	ROM_REGION( 0x600000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x600000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e44-14.47", 0x000000, 0x200000, CRC(4597c034) SHA1(3c16c20969df9e439d42a89e649146319df1b996) )
 	ROM_LOAD32_WORD("e44-12.45", 0x000002, 0x200000, CRC(7160a181) SHA1(d4a351f38219694d6545b4c502c0ba0a7f0bdfd0) )
 	ROM_LOAD32_WORD("e44-13.46", 0x400000, 0x100000, CRC(0b016c4e) SHA1(670d1741376cf929adad3c5e45f921ed4b317d31) )
 	ROM_LOAD32_WORD("e44-11.44", 0x400002, 0x100000, CRC(34d84143) SHA1(d553ab2da9188b1881f70802637d46574a42787e) )
 
-	ROM_REGION( 0x300000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x300000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e44-10.43", 0x000000, 0x200000, CRC(326f738e) SHA1(29c0c870341345eba10993446fecee08b6f13027) )
 	ROM_LOAD       ("e44-09.42", 0x200000, 0x100000, CRC(a8e68eb7) SHA1(843bbb8a61bd4b9cbb14c7242281ce0c83c432ff) )
 
@@ -3692,11 +3668,11 @@ ROM_START( puchicar ) // an Asia cart was dumped and all ROMs match
 	ROM_LOAD       ("e46-02.ic4", 0x000000, 0x200000, CRC(fb046018) SHA1(48d9c582ec9ef59dcc7538598fbd7ea2117896af) )
 	ROM_LOAD       ("e46-01.ic3", 0x200000, 0x200000, CRC(34fc2103) SHA1(dca199bbd0ad28a11960101cda8d110943b10822) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e46-12.ic47", 0x000000, 0x100000, CRC(1f3a9851) SHA1(c8711e2ef0096b41cc9b4c41e521d44b824f7181) )
 	ROM_LOAD32_WORD("e46-11.ic45", 0x000002, 0x100000, CRC(e9f10bf1) SHA1(4ee9be3846b262dc0992c904c40580353b164d46) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e46-10.ic43", 0x000000, 0x100000, CRC(1999b76a) SHA1(83d6d2efe250bf3b119982bbf701f9b9d856af2d) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -3734,11 +3710,11 @@ ROM_START( puchicarj )
 	ROM_LOAD       ("e46-02.ic4", 0x000000, 0x200000, CRC(fb046018) SHA1(48d9c582ec9ef59dcc7538598fbd7ea2117896af) )
 	ROM_LOAD       ("e46-01.ic3", 0x200000, 0x200000, CRC(34fc2103) SHA1(dca199bbd0ad28a11960101cda8d110943b10822) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e46-12.ic47", 0x000000, 0x100000, CRC(1f3a9851) SHA1(c8711e2ef0096b41cc9b4c41e521d44b824f7181) )
 	ROM_LOAD32_WORD("e46-11.ic45", 0x000002, 0x100000, CRC(e9f10bf1) SHA1(4ee9be3846b262dc0992c904c40580353b164d46) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e46-10.ic43", 0x000000, 0x100000, CRC(1999b76a) SHA1(83d6d2efe250bf3b119982bbf701f9b9d856af2d) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -3776,11 +3752,11 @@ ROM_START( puchicaru )
 	ROM_LOAD       ("e46-02.ic4", 0x000000, 0x200000, CRC(fb046018) SHA1(48d9c582ec9ef59dcc7538598fbd7ea2117896af) )
 	ROM_LOAD       ("e46-01.ic3", 0x200000, 0x200000, CRC(34fc2103) SHA1(dca199bbd0ad28a11960101cda8d110943b10822) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e46-12.ic47", 0x000000, 0x100000, CRC(1f3a9851) SHA1(c8711e2ef0096b41cc9b4c41e521d44b824f7181) )
 	ROM_LOAD32_WORD("e46-11.ic45", 0x000002, 0x100000, CRC(e9f10bf1) SHA1(4ee9be3846b262dc0992c904c40580353b164d46) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e46-10.ic43", 0x000000, 0x100000, CRC(1999b76a) SHA1(83d6d2efe250bf3b119982bbf701f9b9d856af2d) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -3814,11 +3790,11 @@ ROM_START( pbobble4 )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e49-08", 0x000000, 0x100000, CRC(87408106) SHA1(6577568ab4b92d6a81f43cf9ea2f0e30e17e2742) )
 	ROM_LOAD32_WORD("e49-07", 0x000002, 0x100000, CRC(1e1e8e1c) SHA1(9c3b994064c6af62b6a24cab85089a74fd92cf7f) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e49-06", 0x000000, 0x100000, CRC(ec85f7ce) SHA1(9fead68c38fc9ca84d34d70343b13665978c362b) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 code */
@@ -3852,11 +3828,11 @@ ROM_START( pbobble4j )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e49-08", 0x000000, 0x100000, CRC(87408106) SHA1(6577568ab4b92d6a81f43cf9ea2f0e30e17e2742) )
 	ROM_LOAD32_WORD("e49-07", 0x000002, 0x100000, CRC(1e1e8e1c) SHA1(9c3b994064c6af62b6a24cab85089a74fd92cf7f) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e49-06", 0x000000, 0x100000, CRC(ec85f7ce) SHA1(9fead68c38fc9ca84d34d70343b13665978c362b) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 code */
@@ -3890,11 +3866,11 @@ ROM_START( pbobble4u )
 
 	EMPTY_SPRITE_HIDATA(0x100000)
 
-	ROM_REGION( 0x200000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x200000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e49-08", 0x000000, 0x100000, CRC(87408106) SHA1(6577568ab4b92d6a81f43cf9ea2f0e30e17e2742) )
 	ROM_LOAD32_WORD("e49-07", 0x000002, 0x100000, CRC(1e1e8e1c) SHA1(9c3b994064c6af62b6a24cab85089a74fd92cf7f) )
 
-	ROM_REGION( 0x100000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x100000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e49-06", 0x000000, 0x100000, CRC(ec85f7ce) SHA1(9fead68c38fc9ca84d34d70343b13665978c362b) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 code */
@@ -3929,11 +3905,11 @@ ROM_START( popnpopj )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e51-01.4", 0x000000, 0x100000, CRC(70347e24) SHA1(6b4ab90f0209e50eac7bee3abcf40afb71ab950a) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e51-08.47", 0x000000, 0x200000, CRC(3ad41f02) SHA1(a4959113c01062003df41cdf6146e8a034917ee2) )
 	ROM_LOAD32_WORD("e51-07.45", 0x000002, 0x200000, CRC(95873e46) SHA1(02504cbd920c8dbcb5abec6388305eff38f7efe0) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e51-06.43", 0x000000, 0x200000, CRC(c240d6c8) SHA1(6f3b5224b7eb8783893375d432bbbfc37f81c230) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -3966,11 +3942,11 @@ ROM_START( popnpop )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e51-01.4", 0x000000, 0x100000, CRC(70347e24) SHA1(6b4ab90f0209e50eac7bee3abcf40afb71ab950a) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e51-08.47", 0x000000, 0x200000, CRC(3ad41f02) SHA1(a4959113c01062003df41cdf6146e8a034917ee2) )
 	ROM_LOAD32_WORD("e51-07.45", 0x000002, 0x200000, CRC(95873e46) SHA1(02504cbd920c8dbcb5abec6388305eff38f7efe0) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e51-06.43", 0x000000, 0x200000, CRC(c240d6c8) SHA1(6f3b5224b7eb8783893375d432bbbfc37f81c230) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -4003,11 +3979,11 @@ ROM_START( popnpopu )
 	ROM_REGION( 0x100000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e51-01.4", 0x000000, 0x100000, CRC(70347e24) SHA1(6b4ab90f0209e50eac7bee3abcf40afb71ab950a) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e51-08.47", 0x000000, 0x200000, CRC(3ad41f02) SHA1(a4959113c01062003df41cdf6146e8a034917ee2) )
 	ROM_LOAD32_WORD("e51-07.45", 0x000002, 0x200000, CRC(95873e46) SHA1(02504cbd920c8dbcb5abec6388305eff38f7efe0) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e51-06.43", 0x000000, 0x200000, CRC(c240d6c8) SHA1(6f3b5224b7eb8783893375d432bbbfc37f81c230) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -4082,11 +4058,11 @@ ROM_START( landmakr )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e61-01.04",0x000000, 0x200000, CRC(6cdd8311) SHA1(7810a5a81f3b5a730d2088c79b12fffd77659b5b) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e61-09.47", 0x000000, 0x200000, CRC(6ba29987) SHA1(b63c12523e19da66b3ca07c3548ac81bf57b59a1) )
 	ROM_LOAD32_WORD("e61-08.45", 0x000002, 0x200000, CRC(76c98e14) SHA1(c021c325ab4ae410fa54e2eab61d34318867432b) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e61-07.43", 0x000000, 0x200000, CRC(4a57965d) SHA1(8e80788e0f47fb242da9af3aa19077dc0ec829b8) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -4121,11 +4097,11 @@ ROM_START( landmakrj )
 	ROM_REGION( 0x200000, "fdp:sprites_hi", 0 )
 	ROM_LOAD       ("e61-01.04",0x000000, 0x200000, CRC(6cdd8311) SHA1(7810a5a81f3b5a730d2088c79b12fffd77659b5b) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_WORD("e61-09.47", 0x000000, 0x200000, CRC(6ba29987) SHA1(b63c12523e19da66b3ca07c3548ac81bf57b59a1) )
 	ROM_LOAD32_WORD("e61-08.45", 0x000002, 0x200000, CRC(76c98e14) SHA1(c021c325ab4ae410fa54e2eab61d34318867432b) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD       ("e61-07.43", 0x000000, 0x200000, CRC(4a57965d) SHA1(8e80788e0f47fb242da9af3aa19077dc0ec829b8) )
 
 	ROM_REGION( 0x180000, "taito_en:audiocpu", 0 ) /* 68000 sound CPU */
@@ -4169,7 +4145,7 @@ ROM_START( landmakrp ) // First 3 roms match parent, mpro-0.63 has bytes 7FFFE &
 	ROM_LOAD       ("obj2-2.30",0x100000, 0x080000, CRC(934556ff) SHA1(aca8585680e66635b8872259cfd38edc96e92066) )
 	ROM_LOAD       ("obj3-2.29",0x180000, 0x080000, CRC(97f0f777) SHA1(787a33b91cb262cc3983a46ba259dd9b153d532a) )
 
-	ROM_REGION( 0x400000, "fdp:tilemap" , 0) /* Tiles */
+	ROM_REGION( 0x400000, "fdp:tiles" , 0) /* Tiles */
 	ROM_LOAD32_BYTE("scr0-0.7", 0x000000, 0x080000, CRC(da6ba562) SHA1(6aefd249d3491380837e04583a0069ed9c495d05) )
 	ROM_LOAD32_BYTE("scr0-1.6", 0x000001, 0x080000, CRC(8c201d27) SHA1(83147c35d03c7b5c84220a6442e99b87ba99cfbc) )
 	ROM_LOAD32_BYTE("scr0-2.5", 0x000002, 0x080000, CRC(36756b9c) SHA1(3d293b11d03fb4cdc5c041fcdade9941bf6a72d0) )
@@ -4179,7 +4155,7 @@ ROM_START( landmakrp ) // First 3 roms match parent, mpro-0.63 has bytes 7FFFE &
 	ROM_LOAD32_BYTE("scr1-2.17",0x200002, 0x080000, CRC(7841468a) SHA1(58b60cbb4ec7e2d0d64fc42161b53b9ff5e2ca8c) )
 	ROM_LOAD32_BYTE("scr1-3.16",0x200003, 0x080000, CRC(926ad229) SHA1(4840227c184bde8d125122a90a70102bf2757ccc) )
 
-	ROM_REGION( 0x200000, "fdp:tilemap_hi", 0 )
+	ROM_REGION( 0x200000, "fdp:tiles_hi", 0 )
 	ROM_LOAD16_BYTE("scr0-4.3", 0x000000, 0x080000, CRC(5b3cf564) SHA1(003f1e4c653897016c95dee67161fa3964d4f5a8) )
 	ROM_LOAD16_BYTE("scr0-5.2", 0x000001, 0x080000, CRC(8e1ea0fe) SHA1(aa815d1d67bf72be6a0c4076490dfd36f28a82ab) )
 	ROM_LOAD16_BYTE("scr1-4.15",0x100000, 0x080000, CRC(783b6d10) SHA1(eab2c7b19890c1f6c13f0062978db5b81988499b) )
@@ -4207,145 +4183,10 @@ ROM_END
 
 /******************************************************************************/
 
-void taito_f3_state::init_ringrage()
-{
-	m_game=RINGRAGE;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_arabianm()
-{
-	m_game=ARABIANM;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_ridingf()
-{
-	m_game=RIDINGF;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_gseeker()
-{
-	m_game=GSEEKER;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_gunlock()
-{
-	m_game=GUNLOCK;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_elvactr()
-{
-	m_game=EACTION2;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_cupfinal()
-{
-	m_game=SCFINALS;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_trstaroj()
-{
-	m_game=TRSTAR;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_scfinals()
-{
-	m_game=SCFINALS;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_lightbr()
-{
-	m_game=LIGHTBR;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_kaiserkn()
-{
-	m_game=KAISERKN;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_dariusg()
-{
-	m_game=DARIUSG;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_spcinvdj()
-{
-	m_game=SPCINVDX;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_qtheater()
-{
-	m_game=QTHEATER;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_spcinv95()
-{
-	m_game=SPCINV95;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_gekirido()
-{
-	m_game=GEKIRIDO;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_ktiger2()
-{
-	m_game=KTIGER2;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_bubsymph()
-{
-	m_game=BUBSYMPH;
-	m_fdp->tile_decode();
-}
-
 void taito_f3_state::init_bubsympb()
 {
-	m_game=BUBSYMPH;
-	m_fdp->tile_decode();
-
 	// almost certainly wrong
 	m_okibank->configure_entries(0, 5, memregion("oki")->base() + 0x30000, 0x10000);
-}
-
-void taito_f3_state::init_bubblem()
-{
-	m_game=BUBBLEM;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_cleopatr()
-{
-	m_game=CLEOPATR;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_popnpop()
-{
-	m_game=POPNPOP;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_landmakr()
-{
-	m_game=LANDMAKR;
-	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_landmkrp()
@@ -4358,33 +4199,6 @@ void taito_f3_state::init_landmkrp()
 	roms running on it.  Easiest thing to do is switch the data around here */
 	ROM[0x1ffff8/4]=0xffffffff; /* From 0xffffff03 */
 	ROM[0x1ffffc/4]=0xffff0003; /* From 0xffff00ff */
-
-	m_game=LANDMAKR;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_pbobble3()
-{
-	m_game=PBOBBLE3;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_pbobble4()
-{
-	m_game=PBOBBLE4;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_quizhuhu()
-{
-	m_game=QUIZHUHU;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_pbobble2()
-{
-	m_game=PBOBBLE2;
-	m_fdp->tile_decode();
 }
 
 void taito_f3_state::init_pbobbl2p()
@@ -4398,166 +4212,109 @@ void taito_f3_state::init_pbobbl2p()
 	/* protection? */
 	ROM[0x40090/4]=0x00004e71|(ROM[0x40090/4]&0xffff0000);
 	ROM[0x40094/4]=0x4e714e71;
-
-	m_game=PBOBBLE2;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_pbobbl2x()
-{
-	m_game=PBOBBLE2;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_hthero95()
-{
-	m_game=HTHERO95;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_kirameki()
-{
-	m_game=KIRAMEKI;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_puchicar()
-{
-	m_game=PUCHICAR;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_twinqix()
-{
-	m_game=TWINQIX;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_arkretrn()
-{
-	m_game=ARKRETRN;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_intcup94()
-{
-	m_game=SCFINALS;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_recalh()
-{
-	m_game=RECALH;
-	m_fdp->tile_decode();
-}
-
-void taito_f3_state::init_commandw()
-{
-	m_game=COMMANDW;
-	m_fdp->tile_decode();
 }
 
 /******************************************************************************/
 
-GAME( 1992, ringrage,   0,        f3_224a, f3, taito_f3_state, init_ringrage, ROT0,   "Taito Corporation Japan",   "Ring Rage (Ver 2.3O 1992/08/09)", 0 )
-GAME( 1992, ringragej,  ringrage, f3_224a, f3, taito_f3_state, init_ringrage, ROT0,   "Taito Corporation",         "Ring Rage (Ver 2.3J 1992/08/09)", 0 )
-GAME( 1992, ringrageu,  ringrage, f3_224a, f3, taito_f3_state, init_ringrage, ROT0,   "Taito America Corporation", "Ring Rage (Ver 2.3A 1992/08/09)", 0 )
-GAME( 1992, arabianm,   0,        f3_224a, f3, taito_f3_state, init_arabianm, ROT0,   "Taito Corporation Japan",   "Arabian Magic (Ver 1.0O 1992/07/06)", 0 )
-GAME( 1992, arabianmj,  arabianm, f3_224a, f3, taito_f3_state, init_arabianm, ROT0,   "Taito Corporation",         "Arabian Magic (Ver 1.0J 1992/07/06)", 0 )
-GAME( 1992, arabianmu,  arabianm, f3_224a, f3, taito_f3_state, init_arabianm, ROT0,   "Taito America Corporation", "Arabian Magic (Ver 1.0A 1992/07/06)", 0 )
-GAME( 1992, ridingf,    0,        f3_224b, f3, taito_f3_state, init_ridingf,  ROT0,   "Taito Corporation Japan",   "Riding Fight (Ver 1.0O)", 0 )
-GAME( 1992, ridingfj,   ridingf,  f3_224b, f3, taito_f3_state, init_ridingf,  ROT0,   "Taito Corporation",         "Riding Fight (Ver 1.0J)", 0 )
-GAME( 1992, ridingfu,   ridingf,  f3_224b, f3, taito_f3_state, init_ridingf,  ROT0,   "Taito America Corporation", "Riding Fight (Ver 1.0A)", 0 )
-GAME( 1992, gseeker,    0,        f3_224b, f3, taito_f3_state, init_gseeker,  ROT90,  "Taito Corporation Japan",   "Grid Seeker: Project Storm Hammer (Ver 1.3O)", 0 )
-GAME( 1992, gseekerj,   gseeker,  f3_224b, f3, taito_f3_state, init_gseeker,  ROT90,  "Taito Corporation",         "Grid Seeker: Project Storm Hammer (Ver 1.3J)", 0 )
-GAME( 1992, gseekeru,   gseeker,  f3_224b, f3, taito_f3_state, init_gseeker,  ROT90,  "Taito America Corporation", "Grid Seeker: Project Storm Hammer (Ver 1.3A)", 0 )
-GAME( 1992, commandw,   0,        f3_224b, f3, taito_f3_state, init_commandw, ROT0,   "Taito Corporation",         "Command War - Super Special Battle & War Game (Ver 0.0J, prototype)", MACHINE_IMPERFECT_GRAPHICS )
+GAME( 1992, ringrage,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Ring Rage (Ver 2.3O 1992/08/09)", 0 )
+GAME( 1992, ringragej,  ringrage, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Ring Rage (Ver 2.3J 1992/08/09)", 0 )
+GAME( 1992, ringrageu,  ringrage, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Ring Rage (Ver 2.3A 1992/08/09)", 0 )
+GAME( 1992, arabianm,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Arabian Magic (Ver 1.0O 1992/07/06)", 0 )
+GAME( 1992, arabianmj,  arabianm, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Arabian Magic (Ver 1.0J 1992/07/06)", 0 )
+GAME( 1992, arabianmu,  arabianm, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Arabian Magic (Ver 1.0A 1992/07/06)", 0 )
+GAME( 1992, ridingf,    0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Riding Fight (Ver 1.0O)", 0 )
+GAME( 1992, ridingfj,   ridingf,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Riding Fight (Ver 1.0J)", 0 )
+GAME( 1992, ridingfu,   ridingf,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Riding Fight (Ver 1.0A)", 0 )
+GAME( 1992, gseeker,    0,        f3, f3, taito_f3_state, empty_init,    ROT90,  "Taito Corporation Japan",   "Grid Seeker: Project Storm Hammer (Ver 1.3O)", 0 )
+GAME( 1992, gseekerj,   gseeker,  f3, f3, taito_f3_state, empty_init,    ROT90,  "Taito Corporation",         "Grid Seeker: Project Storm Hammer (Ver 1.3J)", 0 )
+GAME( 1992, gseekeru,   gseeker,  f3, f3, taito_f3_state, empty_init,    ROT90,  "Taito America Corporation", "Grid Seeker: Project Storm Hammer (Ver 1.3A)", 0 )
+GAME( 1992, commandw,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Command War - Super Special Battle & War Game (Ver 0.0J, prototype)", MACHINE_IMPERFECT_GRAPHICS )
 /* Most of the football games share some GFX roms but shouldn't be considered clones unless they have the same Taito game code for the program roms */
-GAME( 1993, cupfinal,   0,        f3_224a, f3, taito_f3_state, init_cupfinal, ROT0,   "Taito Corporation Japan",   "Taito Cup Finals (Ver 1.0O 1993/02/28)", 0 )
-GAME( 1993, hthero93,   cupfinal, f3_224a, f3, taito_f3_state, init_cupfinal, ROT0,   "Taito Corporation",         "Hat Trick Hero '93 (Ver 1.0J 1993/02/28)", 0 )
-GAME( 1993, hthero93u,  cupfinal, f3_224a, f3, taito_f3_state, init_cupfinal, ROT0,   "Taito Corporation",         "Hat Trick Hero '93 (Ver 1.0A 1993/02/28)", 0 )
-GAME( 1993, trstar,     0,        f3,      f3, taito_f3_state, init_trstaroj, ROT0,   "Taito Corporation Japan",   "Top Ranking Stars (Ver 2.1O 1993/05/21) (New Version)", 0 )
-GAME( 1993, trstarj,    trstar,   f3,      f3, taito_f3_state, init_trstaroj, ROT0,   "Taito Corporation",         "Top Ranking Stars (Ver 2.1J 1993/05/21) (New Version)", 0 )
-GAME( 1993, trstaro,    trstar,   f3,      f3, taito_f3_state, init_trstaroj, ROT0,   "Taito Corporation Japan",   "Top Ranking Stars (Ver 2.1O 1993/05/21) (Old Version)", 0 )
-GAME( 1993, trstaroj,   trstar,   f3,      f3, taito_f3_state, init_trstaroj, ROT0,   "Taito Corporation",         "Top Ranking Stars (Ver 2.1J 1993/05/21) (Old Version)", 0 )
-GAME( 1993, prmtmfgt,   trstar,   f3,      f3, taito_f3_state, init_trstaroj, ROT0,   "Taito America Corporation", "Prime Time Fighter (Ver 2.1A 1993/05/21) (New Version)", 0 )
-GAME( 1993, prmtmfgto,  trstar,   f3,      f3, taito_f3_state, init_trstaroj, ROT0,   "Taito America Corporation", "Prime Time Fighter (Ver 2.1A 1993/05/21) (Old Version)", 0 )
-GAME( 1993, gunlock,    0,        f3_224a, f3, taito_f3_state, init_gunlock,  ROT90,  "Taito Corporation Japan",   "Gunlock (Ver 2.3O 1994/01/20)", 0 )
-GAME( 1993, gunlocko,   gunlock,  f3_224a, f3, taito_f3_state, init_gunlock,  ROT270, "Taito Corporation Japan",   "Gunlock (Ver 2.0O 1993/12/15)", 0 )
-GAME( 1993, rayforcej,  gunlock,  f3_224a, f3, taito_f3_state, init_gunlock,  ROT90,  "Taito Corporation",         "Ray Force (Ver 2.3J 1994/01/20)", 0 )
-GAME( 1993, rayforce,   gunlock,  f3_224a, f3, taito_f3_state, init_gunlock,  ROT90,  "Taito America Corporation", "Ray Force (Ver 2.3A 1994/01/20)", 0 )
-GAME( 1993, scfinals,   0,        f3_224a, f3, taito_f3_state, init_scfinals, ROT0,   "Taito Corporation Japan",   "Super Cup Finals (Ver 2.2O 1994/01/13, single PCB)", 0 )
-GAME( 1993, scfinalso,  scfinals, f3_224a, f3, taito_f3_state, init_scfinals, ROT0,   "Taito Corporation Japan",   "Super Cup Finals (Ver 2.1O 1993/11/19, single PCB)", 0 )
-GAME( 1993, scfinalsoc, scfinals, f3_224a, f3, taito_f3_state, init_scfinals, ROT0,   "Taito Corporation Japan",   "Super Cup Finals (Ver 2.1O 1993/11/19, F3 Cartridge)", 0 )
-GAME( 1993, lightbr,    0,        f3_224a, f3, taito_f3_state, init_lightbr,  ROT0,   "Taito Corporation Japan",   "Light Bringer (Ver 2.2O 1994/04/08)", 0 )
-GAME( 1993, lightbrj,   lightbr,  f3_224a, f3, taito_f3_state, init_lightbr,  ROT0,   "Taito Corporation",         "Light Bringer (Ver 2.1J 1994/02/18)", 0 )
-GAME( 1993, dungeonm,   lightbr,  f3_224a, f3, taito_f3_state, init_lightbr,  ROT0,   "Taito Corporation Japan",   "Dungeon Magic (Ver 2.1O 1994/02/18)", 0 )
-GAME( 1993, dungeonmu,  lightbr,  f3_224a, f3, taito_f3_state, init_lightbr,  ROT0,   "Taito America Corporation", "Dungeon Magic (Ver 2.1A 1994/02/18)", 0 )
-GAME( 1994, intcup94,   0,        f3_224a, f3, taito_f3_state, init_intcup94, ROT0,   "Taito Corporation Japan",   "International Cup '94 (Ver 2.2O 1994/05/26)", 0 )
-GAME( 1994, hthero94,   intcup94, f3_224a, f3, taito_f3_state, init_intcup94, ROT0,   "Taito America Corporation", "Hat Trick Hero '94 (Ver 2.2A 1994/05/26)", 0 )
-GAME( 1994, kaiserkn,   0,        f3_224a, kn, taito_f3_state, init_kaiserkn, ROT0,   "Taito Corporation Japan",   "Kaiser Knuckle (Ver 2.1O 1994/07/29)", 0 )
-GAME( 1994, kaiserknj,  kaiserkn, f3_224a, kn, taito_f3_state, init_kaiserkn, ROT0,   "Taito Corporation",         "Kaiser Knuckle (Ver 2.1J 1994/07/29)", 0 )
-GAME( 1994, gblchmp,    kaiserkn, f3_224a, kn, taito_f3_state, init_kaiserkn, ROT0,   "Taito America Corporation", "Global Champion (Ver 2.1A 1994/07/29)", 0 )
-GAME( 1994, dankuga,    0,        f3_224a, kn, taito_f3_state, init_kaiserkn, ROT0,   "Taito Corporation",         "Dan-Ku-Ga (Ver 0.0J 1994/12/13, prototype)", 0 )
-GAME( 1994, dariusg,    0,        f3,      f3, taito_f3_state, init_dariusg,  ROT0,   "Taito Corporation Japan",   "Darius Gaiden - Silver Hawk (Ver 2.5O 1994/09/19)", 0 )
-GAME( 1994, dariusgj,   dariusg,  f3,      f3, taito_f3_state, init_dariusg,  ROT0,   "Taito Corporation",         "Darius Gaiden - Silver Hawk (Ver 2.5J 1994/09/19)", 0 )
-GAME( 1994, dariusgu,   dariusg,  f3,      f3, taito_f3_state, init_dariusg,  ROT0,   "Taito America Corporation", "Darius Gaiden - Silver Hawk (Ver 2.5A 1994/09/19)", 0 )
-GAME( 1994, dariusgx,   0,        f3,      f3, taito_f3_state, init_dariusg,  ROT0,   "Taito Corporation",         "Darius Gaiden - Silver Hawk Extra Version (Ver 2.7J 1995/03/06) (Official Hack)", 0 )
-GAME( 1994, bublbob2,   0,        f3_224a, f3, taito_f3_state, init_bubsymph, ROT0,   "Taito Corporation Japan",   "Bubble Bobble II (Ver 2.6O 1994/12/16)", 0 )
-GAME( 1994, bublbob2o,  bublbob2, f3_224a, f3, taito_f3_state, init_bubsymph, ROT0,   "Taito Corporation Japan",   "Bubble Bobble II (Ver 2.5O 1994/10/05)", 0 )
-GAME( 1994, bublbob2p,  bublbob2, f3_224a, f3, taito_f3_state, init_bubsymph, ROT0,   "Taito Corporation Japan",   "Bubble Bobble II (Ver 0.0J 1993/12/13, prototype)", 0 )
-GAME( 1994, bubsymphe,  bublbob2, f3_224a, f3, taito_f3_state, init_bubsymph, ROT0,   "Taito Corporation Japan",   "Bubble Symphony (Ver 2.5O 1994/10/05)", 0 )
-GAME( 1994, bubsymphu,  bublbob2, f3_224a, f3, taito_f3_state, init_bubsymph, ROT0,   "Taito America Corporation", "Bubble Symphony (Ver 2.5A 1994/10/05)", 0 )
-GAME( 1994, bubsymphj,  bublbob2, f3_224a, f3, taito_f3_state, init_bubsymph, ROT0,   "Taito Corporation",         "Bubble Symphony (Ver 2.5J 1994/10/05)", 0 )
+GAME( 1993, cupfinal,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Taito Cup Finals (Ver 1.0O 1993/02/28)", 0 )
+GAME( 1993, hthero93,   cupfinal, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Hat Trick Hero '93 (Ver 1.0J 1993/02/28)", 0 )
+GAME( 1993, hthero93u,  cupfinal, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Hat Trick Hero '93 (Ver 1.0A 1993/02/28)", 0 )
+GAME( 1993, trstar,     0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Top Ranking Stars (Ver 2.1O 1993/05/21) (New Version)", 0 )
+GAME( 1993, trstarj,    trstar,   f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Top Ranking Stars (Ver 2.1J 1993/05/21) (New Version)", 0 )
+GAME( 1993, trstaro,    trstar,   f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Top Ranking Stars (Ver 2.1O 1993/05/21) (Old Version)", 0 )
+GAME( 1993, trstaroj,   trstar,   f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Top Ranking Stars (Ver 2.1J 1993/05/21) (Old Version)", 0 )
+GAME( 1993, prmtmfgt,   trstar,   f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Prime Time Fighter (Ver 2.1A 1993/05/21) (New Version)", 0 )
+GAME( 1993, prmtmfgto,  trstar,   f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Prime Time Fighter (Ver 2.1A 1993/05/21) (Old Version)", 0 )
+GAME( 1993, gunlock,    0,        f3, f3, taito_f3_state, empty_init,    ROT90,  "Taito Corporation Japan",   "Gunlock (Ver 2.3O 1994/01/20)", 0 )
+GAME( 1993, gunlocko,   gunlock,  f3, f3, taito_f3_state, empty_init,    ROT270, "Taito Corporation Japan",   "Gunlock (Ver 2.0O 1993/12/15)", 0 )
+GAME( 1993, rayforcej,  gunlock,  f3, f3, taito_f3_state, empty_init,    ROT90,  "Taito Corporation",         "Ray Force (Ver 2.3J 1994/01/20)", 0 )
+GAME( 1993, rayforce,   gunlock,  f3, f3, taito_f3_state, empty_init,    ROT90,  "Taito America Corporation", "Ray Force (Ver 2.3A 1994/01/20)", 0 )
+GAME( 1993, scfinals,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Super Cup Finals (Ver 2.2O 1994/01/13, single PCB)", 0 )
+GAME( 1993, scfinalso,  scfinals, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Super Cup Finals (Ver 2.1O 1993/11/19, single PCB)", 0 )
+GAME( 1993, scfinalsoc, scfinals, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Super Cup Finals (Ver 2.1O 1993/11/19, F3 Cartridge)", 0 )
+GAME( 1993, lightbr,    0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Light Bringer (Ver 2.2O 1994/04/08)", 0 )
+GAME( 1993, lightbrj,   lightbr,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Light Bringer (Ver 2.1J 1994/02/18)", 0 )
+GAME( 1993, dungeonm,   lightbr,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Dungeon Magic (Ver 2.1O 1994/02/18)", 0 )
+GAME( 1993, dungeonmu,  lightbr,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Dungeon Magic (Ver 2.1A 1994/02/18)", 0 )
+GAME( 1994, intcup94,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "International Cup '94 (Ver 2.2O 1994/05/26)", 0 )
+GAME( 1994, hthero94,   intcup94, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Hat Trick Hero '94 (Ver 2.2A 1994/05/26)", 0 )
+GAME( 1994, kaiserkn,   0,        f3, kn, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Kaiser Knuckle (Ver 2.1O 1994/07/29)", 0 )
+GAME( 1994, kaiserknj,  kaiserkn, f3, kn, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Kaiser Knuckle (Ver 2.1J 1994/07/29)", 0 )
+GAME( 1994, gblchmp,    kaiserkn, f3, kn, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Global Champion (Ver 2.1A 1994/07/29)", 0 )
+GAME( 1994, dankuga,    0,        f3, kn, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Dan-Ku-Ga (Ver 0.0J 1994/12/13, prototype)", 0 )
+GAME( 1994, dariusg,    0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Darius Gaiden - Silver Hawk (Ver 2.5O 1994/09/19)", 0 )
+GAME( 1994, dariusgj,   dariusg,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Darius Gaiden - Silver Hawk (Ver 2.5J 1994/09/19)", 0 )
+GAME( 1994, dariusgu,   dariusg,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Darius Gaiden - Silver Hawk (Ver 2.5A 1994/09/19)", 0 )
+GAME( 1994, dariusgx,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Darius Gaiden - Silver Hawk Extra Version (Ver 2.7J 1995/03/06) (Official Hack)", 0 )
+GAME( 1994, bublbob2,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Bubble Bobble II (Ver 2.6O 1994/12/16)", 0 )
+GAME( 1994, bublbob2o,  bublbob2, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Bubble Bobble II (Ver 2.5O 1994/10/05)", 0 )
+GAME( 1994, bublbob2p,  bublbob2, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Bubble Bobble II (Ver 0.0J 1993/12/13, prototype)", 0 )
+GAME( 1994, bubsymphe,  bublbob2, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Bubble Symphony (Ver 2.5O 1994/10/05)", 0 )
+GAME( 1994, bubsymphu,  bublbob2, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Bubble Symphony (Ver 2.5A 1994/10/05)", 0 )
+GAME( 1994, bubsymphj,  bublbob2, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Bubble Symphony (Ver 2.5J 1994/10/05)", 0 )
 GAME( 1994, bubsymphb,  bublbob2, bubsympb,f3, taito_f3_state, init_bubsympb, ROT0,   "bootleg",                   "Bubble Symphony (bootleg with OKI6295)", MACHINE_IMPERFECT_SOUND | MACHINE_NOT_WORKING ) // backgrounds don't display, OKI banking is wrong
 GAME( 1994, bubsymphba, bublbob2, bubsympb,f3, taito_f3_state, init_bubsympb, ROT0,   "bootleg (SOFTV)",           "Seoul Symphony (Bubble Symphony bootleg with OKI6295)", MACHINE_IMPERFECT_SOUND | MACHINE_NOT_WORKING ) // backgrounds don't display, OKI banking is wrong
-GAME( 1994, spcinvdj,   spacedx,  f3,      f3, taito_f3_state, init_spcinvdj, ROT0,   "Taito Corporation",         "Space Invaders DX (Ver 2.6J 1994/09/14) (F3 Version)", 0 )
-GAME( 1994, pwrgoal,    0,        f3_224a, f3, taito_f3_state, init_hthero95, ROT0,   "Taito Corporation Japan",   "Taito Power Goal (Ver 2.5O 1994/11/03)", 0 )
-GAME( 1994, hthero95,   pwrgoal,  f3_224a, f3, taito_f3_state, init_hthero95, ROT0,   "Taito Corporation",         "Hat Trick Hero '95 (Ver 2.5J 1994/11/03)", 0 )
-GAME( 1994, hthero95u,  pwrgoal,  f3_224a, f3, taito_f3_state, init_hthero95, ROT0,   "Taito America Corporation", "Hat Trick Hero '95 (Ver 2.5A 1994/11/03)", 0 )
-GAME( 1994, hthero95a,  pwrgoal,  f3_224a, f3, taito_f3_state, init_hthero95, ROT0,   "Taito Corporation Japan",   "Hat Trick Hero '95 (Ver 2.6Asia 1994/11/17)", 0 )
-GAME( 1994, qtheater,   0,        f3_224c, f3, taito_f3_state, init_qtheater, ROT0,   "Taito Corporation",         "Quiz Theater - 3tsu no Monogatari (Ver 2.3J 1994/11/10)", 0 )
-GAME( 1994, elvactr,    0,        f3,      f3, taito_f3_state, init_elvactr,  ROT0,   "Taito Corporation Japan",   "Elevator Action Returns (Ver 2.2O 1995/02/20)", 0 )
-GAME( 1994, elvactrj,   elvactr,  f3,      f3, taito_f3_state, init_elvactr,  ROT0,   "Taito Corporation",         "Elevator Action Returns (Ver 2.2J 1995/02/20)", 0 )
-GAME( 1994, elvact2u,   elvactr,  f3,      f3, taito_f3_state, init_elvactr,  ROT0,   "Taito America Corporation", "Elevator Action II (Ver 2.2A 1995/02/20)", 0 )
-/* There is also a prototype Elevator Action II (US) pcb with the graphics in a different rom format (same program code) */
-GAME( 1994, recalh,     0,        f3,      f3, taito_f3_state, init_recalh,   ROT0,   "Taito Corporation",         "Recalhorn (Ver 1.42J 1994/5/11, prototype)", 0 )
-GAME( 1995, spcinv95,   0,        f3_224a, f3, taito_f3_state, init_spcinv95, ROT270, "Taito Corporation Japan",   "Space Invaders '95: The Attack Of Lunar Loonies (Ver 2.5O 1995/06/14)", 0 )
-GAME( 1995, spcinv95u,  spcinv95, f3_224a, f3, taito_f3_state, init_spcinv95, ROT270, "Taito America Corporation", "Space Invaders '95: The Attack Of Lunar Loonies (Ver 2.5A 1995/06/14)", 0 )
-GAME( 1995, akkanvdr,   spcinv95, f3_224a, f3, taito_f3_state, init_spcinv95, ROT270, "Taito Corporation",         "Akkanbeder (Ver 2.5J 1995/06/14)", 0 )
-GAME( 1995, twinqix,    0,        f3_224a, f3, taito_f3_state, init_twinqix,  ROT0,   "Taito America Corporation", "Twin Qix (Ver 1.0A 1995/01/17, prototype)", 0 )
-GAME( 1995, quizhuhu,   0,        f3,      f3, taito_f3_state, init_quizhuhu, ROT0,   "Taito Corporation",         "Moriguchi Hiroko no Quiz de Hyuu!Hyuu! (Ver 2.2J 1995/05/25)", 0 )
-GAME( 1995, pbobble2,   0,        f3,      f3, taito_f3_state, init_pbobbl2p, ROT0,   "Taito Corporation Japan",   "Puzzle Bobble 2 (Ver 2.3O 1995/07/31)", 0 )
-GAME( 1995, pbobble2o,  pbobble2, f3,      f3, taito_f3_state, init_pbobble2, ROT0,   "Taito Corporation Japan",   "Puzzle Bobble 2 (Ver 2.2O 1995/07/20)", 0 )
-GAME( 1995, pbobble2j,  pbobble2, f3,      f3, taito_f3_state, init_pbobble2, ROT0,   "Taito Corporation",         "Puzzle Bobble 2 (Ver 2.2J 1995/07/20)", 0 )
-GAME( 1995, pbobble2u,  pbobble2, f3,      f3, taito_f3_state, init_pbobble2, ROT0,   "Taito America Corporation", "Bust-A-Move Again (Ver 2.3A 1995/07/31)", 0 )
-GAME( 1995, pbobble2x,  pbobble2, f3,      f3, taito_f3_state, init_pbobbl2x, ROT0,   "Taito Corporation",         "Puzzle Bobble 2X (Ver 2.2J 1995/11/11)", 0 )
-GAME( 1995, gekiridn,   0,        f3,      f3, taito_f3_state, init_gekirido, ROT270, "Taito Corporation",         "Gekirindan (Ver 2.3O 1995/09/21)", 0 )
-GAME( 1995, gekiridnj,  gekiridn, f3,      f3, taito_f3_state, init_gekirido, ROT270, "Taito Corporation",         "Gekirindan (Ver 2.3J 1995/09/21)", 0 )
-GAME( 1995, tcobra2,    0,        f3,      f3, taito_f3_state, init_ktiger2,  ROT270, "Taito Corporation Japan",   "Twin Cobra II (Ver 2.1O 1995/11/30)", 0 )
-GAME( 1995, tcobra2u,   tcobra2,  f3,      f3, taito_f3_state, init_ktiger2,  ROT270, "Taito America Corporation", "Twin Cobra II (Ver 2.1A 1995/11/30)", 0 )
-GAME( 1995, ktiger2,    tcobra2,  f3,      f3, taito_f3_state, init_ktiger2,  ROT270, "Taito Corporation",         "Kyukyoku Tiger II (Ver 2.1J 1995/11/30)", 0 )
-GAME( 1995, bubblem,    0,        f3_224a, f3, taito_f3_state, init_bubblem,  ROT0,   "Taito Corporation Japan",   "Bubble Memories: The Story Of Bubble Bobble III (Ver 2.4O 1996/02/15)", 0 )
-GAME( 1995, bubblemu,   bubblem,  f3_224a, f3, taito_f3_state, init_bubblem,  ROT0,   "Taito America Corporation", "Bubble Memories: The Story Of Bubble Bobble III (Ver 2.5A 1996/02/21)", 0 )
-GAME( 1995, bubblemj,   bubblem,  f3_224a, f3, taito_f3_state, init_bubblem,  ROT0,   "Taito Corporation",         "Bubble Memories: The Story Of Bubble Bobble III (Ver 2.3J 1996/02/07)", 0 )
-GAME( 1996, cleopatr,   0,        f3_224a, f3, taito_f3_state, init_cleopatr, ROT0,   "Taito Corporation",         "Cleopatra Fortune (Ver 2.1J 1996/09/05)", 0 )
-GAME( 1996, cleopatro,  cleopatr, f3_224a, f3, taito_f3_state, init_cleopatr, ROT0,   "bootleg",                   "Cleopatra Fortune (Ver 2.1O 1996/09/05, bootleg)", 0 )
-GAME( 1996, pbobble3,   0,        f3,      f3, taito_f3_state, init_pbobble3, ROT0,   "Taito Corporation",         "Puzzle Bobble 3 (Ver 2.1O 1996/09/27)", 0 )
-GAME( 1996, pbobble3u,  pbobble3, f3,      f3, taito_f3_state, init_pbobble3, ROT0,   "Taito Corporation",         "Puzzle Bobble 3 (Ver 2.1A 1996/09/27)", 0 )
-GAME( 1996, pbobble3j,  pbobble3, f3,      f3, taito_f3_state, init_pbobble3, ROT0,   "Taito Corporation",         "Puzzle Bobble 3 (Ver 2.1J 1996/09/27)", 0 )
-GAME( 1997, arkretrn,   0,        f3,      f3, taito_f3_state, init_arkretrn, ROT0,   "Taito Corporation",         "Arkanoid Returns (Ver 2.02O 1997/02/10)", 0 )
-GAME( 1997, arkretrnu,  arkretrn, f3,      f3, taito_f3_state, init_arkretrn, ROT0,   "Taito Corporation",         "Arkanoid Returns (Ver 2.02A 1997/02/10)", 0 )
-GAME( 1997, arkretrnj,  arkretrn, f3,      f3, taito_f3_state, init_arkretrn, ROT0,   "Taito Corporation",         "Arkanoid Returns (Ver 2.02J 1997/02/10)", 0 )
-GAME( 1997, kirameki,   0,        f3_224a, f3, taito_f3_state, init_kirameki, ROT0,   "Taito Corporation",         "Kirameki Star Road (Ver 2.10J 1997/08/29)", 0 )
-GAME( 1997, puchicar,   0,        f3,      f3, taito_f3_state, init_puchicar, ROT0,   "Taito Corporation",         "Puchi Carat (Ver 2.02O 1997/10/29)", 0 )
-GAME( 1997, puchicaru,  puchicar, f3,      f3, taito_f3_state, init_puchicar, ROT0,   "Taito America Corporation", "Puchi Carat (Ver 2.04A 1997/11/08)", 0 )
-GAME( 1997, puchicarj,  puchicar, f3,      f3, taito_f3_state, init_puchicar, ROT0,   "Taito Corporation",         "Puchi Carat (Ver 2.02J 1997/10/29)", 0 )
-GAME( 1997, pbobble4,   0,        f3,      f3, taito_f3_state, init_pbobble4, ROT0,   "Taito Corporation",         "Puzzle Bobble 4 (Ver 2.04O 1997/12/19)", 0 )
-GAME( 1997, pbobble4j,  pbobble4, f3,      f3, taito_f3_state, init_pbobble4, ROT0,   "Taito Corporation",         "Puzzle Bobble 4 (Ver 2.04J 1997/12/19)", 0 )
-GAME( 1997, pbobble4u,  pbobble4, f3,      f3, taito_f3_state, init_pbobble4, ROT0,   "Taito Corporation",         "Puzzle Bobble 4 (Ver 2.04A 1997/12/19)", 0 )
-GAME( 1997, popnpop,    0,        f3,      f3, taito_f3_state, init_popnpop,  ROT0,   "Taito Corporation",         "Pop'n Pop (Ver 2.07O 1998/02/09)", 0 )
-GAME( 1997, popnpopj,   popnpop,  f3,      f3, taito_f3_state, init_popnpop,  ROT0,   "Taito Corporation",         "Pop'n Pop (Ver 2.07J 1998/02/09)", 0 )
-GAME( 1997, popnpopu,   popnpop,  f3,      f3, taito_f3_state, init_popnpop,  ROT0,   "Taito Corporation",         "Pop'n Pop (Ver 2.07A 1998/02/09)", 0 )
-GAME( 1998, landmakr,   0,        f3,      f3, taito_f3_state, init_landmakr, ROT0,   "Taito Corporation",         "Land Maker (Ver 2.02O 1998/06/02)", 0 )
-GAME( 1998, landmakrj,  landmakr, f3,      f3, taito_f3_state, init_landmakr, ROT0,   "Taito Corporation",         "Land Maker (Ver 2.01J 1998/06/01)", 0 )
-GAME( 1998, landmakrp,  landmakr, f3,      f3, taito_f3_state, init_landmkrp, ROT0,   "Taito Corporation",         "Land Maker (Ver 2.02O 1998/06/02, prototype)", 0 ) // proto or hack/bootleg?
+GAME( 1994, spcinvdj,   spacedx,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Space Invaders DX (Ver 2.6J 1994/09/14) (F3 Version)", 0 )
+GAME( 1994, pwrgoal,    0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Taito Power Goal (Ver 2.5O 1994/11/03)", 0 )
+GAME( 1994, hthero95,   pwrgoal,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Hat Trick Hero '95 (Ver 2.5J 1994/11/03)", 0 )
+GAME( 1994, hthero95u,  pwrgoal,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Hat Trick Hero '95 (Ver 2.5A 1994/11/03)", 0 )
+GAME( 1994, hthero95a,  pwrgoal,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Hat Trick Hero '95 (Ver 2.6Asia 1994/11/17)", 0 )
+GAME( 1994, qtheater,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Quiz Theater - 3tsu no Monogatari (Ver 2.3J 1994/11/10)", 0 )
+GAME( 1994, elvactr,    0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Elevator Action Returns (Ver 2.2O 1995/02/20)", 0 )
+GAME( 1994, elvactrj,   elvactr,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Elevator Action Returns (Ver 2.2J 1995/02/20)", 0 )
+GAME( 1994, elvact2u,   elvactr,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Elevator Action II (Ver 2.2A 1995/02/20)", 0 )
+/* There is also a prototype Elevatoron II (US) pcb with the graphics in a different rom format (same program code) */
+GAME( 1994, recalh,     0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Recalhorn (Ver 1.42J 1994/5/11, prototype)", 0 )
+GAME( 1995, spcinv95,   0,        f3, f3, taito_f3_state, empty_init,    ROT270, "Taito Corporation Japan",   "Space Invaders '95: The Attack Of Lunar Loonies (Ver 2.5O 1995/06/14)", 0 )
+GAME( 1995, spcinv95u,  spcinv95, f3, f3, taito_f3_state, empty_init,    ROT270, "Taito America Corporation", "Space Invaders '95: The Attack Of Lunar Loonies (Ver 2.5A 1995/06/14)", 0 )
+GAME( 1995, akkanvdr,   spcinv95, f3, f3, taito_f3_state, empty_init,    ROT270, "Taito Corporation",         "Akkanbeder (Ver 2.5J 1995/06/14)", 0 )
+GAME( 1995, twinqix,    0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Twin Qix (Ver 1.0A 1995/01/17, prototype)", 0 )
+GAME( 1995, quizhuhu,   0,        f3, f3, taito_f3_state, empty_init   , ROT0,   "Taito Corporation",         "Moriguchi Hiroko no Quiz de Hyuu!Hyuu! (Ver 2.2J 1995/05/25)", 0 )
+GAME( 1995, pbobble2,   0,        f3, f3, taito_f3_state, init_pbobbl2p, ROT0,   "Taito Corporation Japan",   "Puzzle Bobble 2 (Ver 2.3O 1995/07/31)", 0 )
+GAME( 1995, pbobble2o,  pbobble2, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Puzzle Bobble 2 (Ver 2.2O 1995/07/20)", 0 )
+GAME( 1995, pbobble2j,  pbobble2, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Puzzle Bobble 2 (Ver 2.2J 1995/07/20)", 0 )
+GAME( 1995, pbobble2u,  pbobble2, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Bust-A-Move Again (Ver 2.3A 1995/07/31)", 0 )
+GAME( 1995, pbobble2x,  pbobble2, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Puzzle Bobble 2X (Ver 2.2J 1995/11/11)", 0 )
+GAME( 1995, gekiridn,   0,        f3, f3, taito_f3_state, empty_init,    ROT270, "Taito Corporation",         "Gekirindan (Ver 2.3O 1995/09/21)", 0 )
+GAME( 1995, gekiridnj,  gekiridn, f3, f3, taito_f3_state, empty_init,    ROT270, "Taito Corporation",         "Gekirindan (Ver 2.3J 1995/09/21)", 0 )
+GAME( 1995, tcobra2,    0,        f3, f3, taito_f3_state, empty_init,    ROT270, "Taito Corporation Japan",   "Twin Cobra II (Ver 2.1O 1995/11/30)", 0 )
+GAME( 1995, tcobra2u,   tcobra2,  f3, f3, taito_f3_state, empty_init,    ROT270, "Taito America Corporation", "Twin Cobra II (Ver 2.1A 1995/11/30)", 0 )
+GAME( 1995, ktiger2,    tcobra2,  f3, f3, taito_f3_state, empty_init,    ROT270, "Taito Corporation",         "Kyukyoku Tiger II (Ver 2.1J 1995/11/30)", 0 )
+GAME( 1995, bubblem,    0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation Japan",   "Bubble Memories: The Story Of Bubble Bobble III (Ver 2.4O 1996/02/15)", 0 )
+GAME( 1995, bubblemu,   bubblem,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Bubble Memories: The Story Of Bubble Bobble III (Ver 2.5A 1996/02/21)", 0 )
+GAME( 1995, bubblemj,   bubblem,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Bubble Memories: The Story Of Bubble Bobble III (Ver 2.3J 1996/02/07)", 0 )
+GAME( 1996, cleopatr,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Cleopatra Fortune (Ver 2.1J 1996/09/05)", 0 )
+GAME( 1996, cleopatro,  cleopatr, f3, f3, taito_f3_state, empty_init,    ROT0,   "bootleg",                   "Cleopatra Fortune (Ver 2.1O 1996/09/05, bootleg)", 0 )
+GAME( 1996, pbobble3,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Puzzle Bobble 3 (Ver 2.1O 1996/09/27)", 0 )
+GAME( 1996, pbobble3u,  pbobble3, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Puzzle Bobble 3 (Ver 2.1A 1996/09/27)", 0 )
+GAME( 1996, pbobble3j,  pbobble3, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Puzzle Bobble 3 (Ver 2.1J 1996/09/27)", 0 )
+GAME( 1997, arkretrn,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Arkanoid Returns (Ver 2.02O 1997/02/10)", 0 )
+GAME( 1997, arkretrnu,  arkretrn, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Arkanoid Returns (Ver 2.02A 1997/02/10)", 0 )
+GAME( 1997, arkretrnj,  arkretrn, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Arkanoid Returns (Ver 2.02J 1997/02/10)", 0 )
+GAME( 1997, kirameki,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Kirameki Star Road (Ver 2.10J 1997/08/29)", 0 )
+GAME( 1997, puchicar,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Puchi Carat (Ver 2.02O 1997/10/29)", 0 )
+GAME( 1997, puchicaru,  puchicar, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito America Corporation", "Puchi Carat (Ver 2.04A 1997/11/08)", 0 )
+GAME( 1997, puchicarj,  puchicar, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Puchi Carat (Ver 2.02J 1997/10/29)", 0 )
+GAME( 1997, pbobble4,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Puzzle Bobble 4 (Ver 2.04O 1997/12/19)", 0 )
+GAME( 1997, pbobble4j,  pbobble4, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Puzzle Bobble 4 (Ver 2.04J 1997/12/19)", 0 )
+GAME( 1997, pbobble4u,  pbobble4, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Puzzle Bobble 4 (Ver 2.04A 1997/12/19)", 0 )
+GAME( 1997, popnpop,    0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Pop'n Pop (Ver 2.07O 1998/02/09)", 0 )
+GAME( 1997, popnpopj,   popnpop,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Pop'n Pop (Ver 2.07J 1998/02/09)", 0 )
+GAME( 1997, popnpopu,   popnpop,  f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Pop'n Pop (Ver 2.07A 1998/02/09)", 0 )
+GAME( 1998, landmakr,   0,        f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Land Maker (Ver 2.02O 1998/06/02)", 0 )
+GAME( 1998, landmakrj,  landmakr, f3, f3, taito_f3_state, empty_init,    ROT0,   "Taito Corporation",         "Land Maker (Ver 2.01J 1998/06/01)", 0 )
+GAME( 1998, landmakrp,  landmakr, f3, f3, taito_f3_state, init_landmkrp, ROT0,   "Taito Corporation",         "Land Maker (Ver 2.02O 1998/06/02, prototype)", 0 ) // proto or hack/bootleg?
