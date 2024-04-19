@@ -40,45 +40,11 @@ public:
 	void f3_224b(machine_config &config);
 	void f3_224c(machine_config &config);
 
-	void init_commandw();
-	void init_pbobble2();
-	void init_puchicar();
-	void init_intcup94();
-	void init_landmakr();
-	void init_twinqix();
-	void init_elvactr();
-	void init_arabianm();
 	void init_bubsympb();
-	void init_ktiger2();
-	void init_lightbr();
-	void init_gekirido();
-	void init_arkretrn();
-	void init_kirameki();
-	void init_qtheater();
-	void init_popnpop();
-	void init_spcinvdj();
 	void init_pbobbl2p();
 	void init_landmkrp();
-	void init_bubblem();
-	void init_ridingf();
-	void init_gseeker();
-	void init_bubsymph();
-	void init_hthero95();
-	void init_gunlock();
-	void init_pbobble4();
-	void init_dariusg();
-	void init_recalh();
-	void init_kaiserkn();
-	void init_spcinv95();
-	void init_trstaroj();
-	void init_ringrage();
-	void init_cupfinal();
-	void init_quizhuhu();
-	void init_pbobble3();
-	void init_cleopatr();
-	void init_scfinals();
-	void init_pbobbl2x();
-
+	void init_common();
+	
 	template <int Num> DECLARE_CUSTOM_INPUT_MEMBER(f3_analog_r);
 	template <int Num> DECLARE_CUSTOM_INPUT_MEMBER(f3_coin_r);
 	DECLARE_CUSTOM_INPUT_MEMBER(eeprom_read);
@@ -89,7 +55,6 @@ protected:
 	// should be 30.47618_MHz_XTAL / 2
 	static inline constexpr XTAL F3_MAIN_CLK = 16_MHz_XTAL;
 
-	struct F3config;
 	/* This it the best way to allow game specific kludges until the system is fully understood */
 	enum {
 		/* Early F3 class games, these are not cartridge games and system features may be different */
@@ -132,8 +97,6 @@ protected:
 		TMDRILL
 	};
 
-	static const F3config f3_config_table[];
-
 	virtual void machine_start() override;
 	virtual void machine_reset() override;
 	virtual void video_start() override;
@@ -155,8 +118,6 @@ protected:
 	u32 m_coin_word[2];
 	
 	int m_game = 0;
-
-	const F3config *m_game_config = nullptr;
 
 	void bubsympb_map(address_map &map);
 	void f3_map(address_map &map);

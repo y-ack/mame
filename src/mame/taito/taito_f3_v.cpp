@@ -303,51 +303,6 @@ Playfield tile info:
 #include <algorithm>
 #include <variant>
 
-// Game specific data - some of this can be removed when the software values are figured out
-struct taito_f3_state::F3config {
-	int name;
-	int extend;     // playfield control 0x1F bit 7
-	int sprite_lag;
-};
-
-const taito_f3_state::F3config taito_f3_state::f3_config_table[] = {
-	/* Name    Extend  Lag */
-	{ RINGRAGE,  0,     2 },
-	{ ARABIANM,  0,     2 },
-	{ RIDINGF,   1,     1 },
-	{ GSEEKER,   0,     1 },
-	{ COMMANDW,  1,     1 },
-	{ SCFINALS,  0,     1 },
-	{ TRSTAR,    1,     0 },
-	{ GUNLOCK,   1,     2 },
-	{ LIGHTBR,   1,     2 },
-	{ KAISERKN,  0,     2 },
-	{ DARIUSG,   0,     2 },
-	{ BUBSYMPH,  1,     1 },
-	{ SPCINVDX,  1,     1 },
-	{ HTHERO95,  0,     1 },
-	{ QTHEATER,  1,     1 },
-	{ EACTION2,  1,     2 },
-	{ RECALH,    1,     1 },
-	{ SPCINV95,  0,     1 },
-	{ TWINQIX,   1,     1 },
-	{ QUIZHUHU,  1,     1 },
-	{ PBOBBLE2,  0,     1 },
-	{ GEKIRIDO,  0,     1 },
-	{ KTIGER2,   0,     0 },
-	{ BUBBLEM,   1,     1 },
-	{ CLEOPATR,  0,     1 },
-	{ PBOBBLE3,  0,     1 },
-	{ ARKRETRN,  1,     1 },
-	{ KIRAMEKI,  0,     1 },
-	{ PUCHICAR,  1,     1 },
-	{ PBOBBLE4,  0,     1 },
-	{ POPNPOP,   1,     1 },
-	{ LANDMAKR,  1,     1 },
-	{ TMDRILL,   1,     0 },
-	{0}
-};
-
 void taito_f3_state::device_post_load()
 {
 	/* force a reread of the dynamic tiles in the pixel layer */
@@ -366,26 +321,70 @@ void taito_f3_state::screen_vblank(int state)
 
 void taito_f3_state::video_start()
 {
-	const F3config *pCFG = &f3_config_table[0];
+	// Game specific data - some of this can be removed when the software values are figured out
+	struct F3config {
+		const char *name;
+		int extend;     // playfield control 0x1F bit 7
+		int sprite_lag;
+	};
 
-	/* Setup individual game */
-	do {
-		if (pCFG->name == m_game) {
+	F3config f3_config_table[] = {
+		/* Name    Extend  Lag */
+		{ "ringrage",  0,     2 },
+		{ "arabianm",  0,     2 },
+		{ "ridingf",   1,     1 },
+		{ "gseeker",   0,     1 },
+		{ "commandw",  1,     1 },
+		{ "cupfinal",  0,     1 },
+		{ "trstar",    1,     0 },
+		{ "gunlock",   1,     2 },
+		{ "scfinals",  0,     1 },
+		{ "lightbr",   1,     2 },
+		{ "intcup94",  0,     1 },
+		{ "kaiserkn",  0,     2 },
+		{ "dankuga",   0,     2 },
+		{ "dariusg",   0,     2 },
+		{ "bublbob2",  1,     1 },
+		{ "spacedx",   1,     1 },
+		{ "pwrgoal",   0,     1 },
+		{ "qtheater",  1,     1 },
+		{ "elvactr",   1,     2 },
+		{ "recalh",    1,     1 },
+		{ "spcinv95",  0,     1 },
+		{ "twinqix",   1,     1 },
+		{ "quizhuhu",  1,     1 },
+		{ "pbobble2",  0,     1 },
+		{ "gekiridn",  0,     1 },
+		{ "tcobra2",   0,     0 },
+		{ "bubblem",   1,     1 },
+		{ "cleopatr",  0,     1 },
+		{ "pbobble3",  0,     1 },
+		{ "arkretrn",  1,     1 },
+		{ "kirameki",  0,     1 },
+		{ "puchicar",  1,     1 },
+		{ "pbobble4",  0,     1 },
+		{ "popnpop",   1,     1 },
+		{ "landmakr",  1,     1 },
+		{ "2mindril",  1,     0 },
+		{ nullptr,     1,     1 },
+	};
+
+	const game_driver &game = machine().system();
+	
+	const F3config *config;
+	for (config = &f3_config_table[0]; config->name; config++) {
+		if (!strcmp(config->name, game.name) || !strcmp(config->name, game.parent))
 			break;
-		}
-		pCFG++;
-	} while (pCFG->name);
-
-	m_game_config = pCFG;
+	}
 	
 	m_screen->register_screen_bitmap(m_fdp->m_pri_alp_bitmap);
 	for (auto &sp_bitmap : m_fdp->m_sprite_framebuffers) {
 		m_screen->register_screen_bitmap(sp_bitmap);
 	}
 	
-	m_fdp->create_tilemaps(m_game_config->extend);
+	m_fdp->create_tilemaps(config->extend);
 	
-	m_fdp->m_sprite_lag = m_game_config->sprite_lag;
+	m_fdp->m_sprite_lag = config->sprite_lag;
 }
 
 /******************************************************************************/
