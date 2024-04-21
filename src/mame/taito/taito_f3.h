@@ -251,13 +251,14 @@ protected:
 		bool x_sample_enable{false};
 		u16 mix_value{0};
 		u8 prio{0};
-		void set_mix(u16 v) { mix_value = v; prio = v & 0xf; };
+		u8 blend_mode;
+		void set_mix(u16 v) { mix_value = v; prio = v & 0xf; blend_mode = BIT(mix_value, 14, 2); };
 		void set_prio(u8 p) { mix_value = (mix_value & 0xfff0) | p; prio = p; };
+		void set_blend(u8 b) { mix_value = (mix_value & 0x3fff) | (b << 14); blend_mode = b; };
 		auto clip_inv() const { return std::bitset<4>(mix_value >> 4); };
 		auto clip_enable() const { return std::bitset<4>(mix_value >> 8); };
 		bool clip_inv_mode() const { return mix_value & 0x1000; };
 		inline bool layer_enable() const;
-		u8 blend_mask() const { return BIT(mix_value, 14, 2); };
 		bool blend_a() const { return mix_value & 0x4000; };
 		bool blend_b() const { return mix_value & 0x8000; };
 
@@ -324,6 +325,8 @@ protected:
 		inline int y_index(int y) const;
 		inline int x_index(int x) const;
 		bool blend_select(const u8 *line_flags, int x) const { return BIT(line_flags[x], 0); };
+		u8 (*pf_row_usage)[32]{nullptr};
+		inline bool used(int y) const;
 		const char *debug_name() const { return "PF"; };
 	};
 
@@ -368,6 +371,7 @@ protected:
 	u16 *m_pf_data[8]{};
 	int m_sprite_lag = 0;
 	u8 m_sprite_pri_row_usage[256]{};
+	u8 m_tilemap_row_usage[4][32]{};
 	bitmap_ind8 m_pri_alp_bitmap;
 	bitmap_ind16 m_sprite_framebuffer{};
 	u16 m_width_mask = 0;
