@@ -57,23 +57,45 @@ static const gfx_layout layout_6bpp_sprite_hi = {
 	16*16*2
 };
 
+// the roms are loaded into a u64 array with the upper 16 bits unused:
+// [AAAA AAAA AAAA AAAA|BBBB BBBB BBBB BBBB|CCCC CCCC CCCC CCCC|.... .... .... ....]
+// (so +64 bits means  the next address)
+// each item contains data for 8 pixels (6 bits per pixel)
+// [0000 1111 2222 3333|4444 5555 6666 7777|0123 4567 0123 4567|.... .... .... ....]
+// note that the upper two bitplanes are stored in a different order than the first four
+
+static const gfx_layout layout_tile_low = {
+ 	16,16,
+	RGN_FRAC(1,1),
+	4,
+	{ STEP4(0,1) },
+	{
+		1*4, 0*4, 3*4, 2*4, 5*4, 4*4, 7*4, 6*4,
+		64+1*4, 64+0*4, 64+3*4, 64+2*4, 64+5*4, 64+4*4, 64+7*4, 64+6*4,
+	},
+	{ STEP16(0, 64*2) },
+	64*2*16
+};
+
+//#define STEP8_INV(START,STEP)       STEP4_INV((START)+4*(STEP),STEP),STEP4_INV(START,STEP)
+
 static const gfx_layout layout_6bpp_tile_hi = {
 	16,16,
 	RGN_FRAC(1,1),
 	6,
-	{ 8,0/**/,0,0,0,0/**/ },
-	{ STEP8(7,-1), STEP8(8*2+7,-1) },
-	{ STEP16(0,8*2*2) },
-	16*16*2
+	{ 32+8, 32+0, 48,48,48,48, },
+	{ STEP8(8-1, -1), STEP8(64+8-1, -1) },
+	{ STEP16(0, 64*2) },
+	64*2*16
 };
 
 GFXDECODE_MEMBER( FDP::gfxinfo )
 	GFXDECODE_DEVICE( nullptr,      0, charlayout,             0x0000, 0x0400>>4 ) /* Dynamically modified */
 	GFXDECODE_DEVICE( nullptr,      0, pivotlayout,            0x0000, 0x0400>>4 ) /* Dynamically modified */
 	GFXDECODE_DEVICE( "sprites",    0, gfx_16x16x4_packed_lsb, 0x1000, 0x1000>>4 ) // low 4bpp of 6bpp sprite data
-	GFXDECODE_DEVICE( "tiles",      0, gfx_16x16x4_packed_lsb, 0x0000, 0x2000>>4 ) // low 4bpp of 6bpp tilemap data
-	GFXDECODE_DEVICE( "tiles_hi",   0, layout_6bpp_tile_hi,    0x0000, 0x2000>>4 ) // hi 2bpp of 6bpp tilemap data
-	GFXDECODE_DEVICE( "sprites_hi", 0, layout_6bpp_sprite_hi,  0x1000, 0x1000>>4 ) // hi 2bpp of 6bpp sprite data
+	GFXDECODE_DEVICE( "tiles",      0, layout_tile_low,        0x0000, 0x2000>>4 ) // low 4bpp of 6bpp tilemap data
+	GFXDECODE_DEVICE( "tiles",      0, layout_6bpp_tile_hi,    0x0000, 0x2000>>4 ) // hi 2bpp of 6bpp tilemap data
+	GFXDECODE_DEVICE( "sprites",    0, layout_6bpp_sprite_hi,  0x1000, 0x1000>>4 ) // hi 2bpp of 6bpp sprite data
 GFXDECODE_END
 
 static const gfx_layout bubsympb_sprite_layout = {
