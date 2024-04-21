@@ -67,14 +67,14 @@ static const gfx_layout layout_tile_low = {
 	64*2*16
 };
 
-//#define STEP8_INV(START,STEP)       STEP4_INV((START)+4*(STEP),STEP),STEP4_INV(START,STEP)
+#define STEP8_INV(START,STEP)       STEP4_INV((START)+4*(STEP),STEP),STEP4_INV(START,STEP)
 
-static const gfx_layout layout_6bpp_tile_hi = {
+static const gfx_layout layout_tile_hi = {
 	16,16,
 	RGN_FRAC(1,1),
 	6,
 	{ STEP2_INV(32, 8), 48,48,48,48, },
-	{ STEP8(8-1, -1), STEP8(64+8-1, -1) },
+	{ STEP8_INV(0, 1), STEP8_INV(64, 1) },
 	{ STEP16(0, 64*2) },
 	64*2*16
 };
@@ -101,7 +101,7 @@ static const gfx_layout layout_sprite_low = {
 	32*4*16,
 };
 
-static const gfx_layout layout_6bpp_sprite_hi = {
+static const gfx_layout layout_sprite_hi = {
 	16,16,
 	RGN_FRAC(1,1),
 	6,
@@ -121,8 +121,8 @@ GFXDECODE_MEMBER( FDP::gfxinfo )
 	GFXDECODE_DEVICE( nullptr,      0, pivotlayout,            0x0000, 0x0400>>4 ) /* Dynamically modified */
 	GFXDECODE_DEVICE( "sprites",    0, layout_sprite_low,      0x1000, 0x1000>>4 ) // low 4bpp of 6bpp sprite data
 	GFXDECODE_DEVICE( "tiles",      0, layout_tile_low,        0x0000, 0x2000>>4 ) // low 4bpp of 6bpp tilemap data
-	GFXDECODE_DEVICE( "tiles",      0, layout_6bpp_tile_hi,    0x0000, 0x2000>>4 ) // hi 2bpp of 6bpp tilemap data
-	GFXDECODE_DEVICE( "sprites",    0, layout_6bpp_sprite_hi,  0x1000, 0x1000>>4 ) // hi 2bpp of 6bpp sprite data
+	GFXDECODE_DEVICE( "tiles",      0, layout_tile_hi,    0x0000, 0x2000>>4 ) // hi 2bpp of 6bpp tilemap data
+	GFXDECODE_DEVICE( "sprites",    0, layout_sprite_hi,  0x1000, 0x1000>>4 ) // hi 2bpp of 6bpp sprite data
 GFXDECODE_END
 
 static const gfx_layout bubsympb_sprite_layout = {
