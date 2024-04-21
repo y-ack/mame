@@ -105,72 +105,46 @@ GFXDECODE_MEMBER( FDP::gfx_bubsympb )
 	GFXDECODE_DEVICE( "sprites",    0, bubsympb_sprite_layout,      0x1000, 0x1000>>4) // dummy gfx duplicate for avoid crash
 GFXDECODE_END
 
+	// the upper 2 bitplanes are interleaved differently than the lower 4, so they have to be merged manually
+void FDP::decode_hi(int low, int high, std::unique_ptr<u8[]> &decoded)
+{
+	gfx_element *gfx_lo = gfx(low);
+	gfx_element *gfx_hi = gfx(high);
+
+	// allocate memory for the assembled data
+	decoded = std::make_unique<u8[]>(gfx_lo->elements() * gfx_lo->width() * gfx_lo->height());
+
+	// loop over elements
+	u8 *dest = decoded.get();
+	for (int c = 0; c < gfx_lo->elements(); c++) {
+		const u8 *c1base = gfx_lo->get_data(c);
+		const u8 *c3base = gfx_hi->get_data(c);
+
+		// loop over height
+		for (int y = 0; y < gfx_lo->height(); y++) {
+			const u8 *c1 = c1base;
+			const u8 *c3 = c3base;
+
+			/* Expand 2bits into 4bits format */
+			for (int x = 0; x < gfx_lo->width(); x++)
+				*dest++ = (*c1++ & 0xf) | (*c3++ & 0x30);
+
+			c1base += gfx_lo->rowbytes();
+			c3base += gfx_hi->rowbytes();
+		}
+	}
+
+	gfx_lo->set_raw_layout(decoded.get(), gfx_lo->width(), gfx_lo->height(), gfx_lo->elements(), 8 * gfx_lo->width(), 8 * gfx_lo->width() * gfx_lo->height());
+	set_gfx(high, nullptr);
+}
+
 void FDP::tile_decode()
 {
-	// the upper 2 bitplanes are interleaved differently than the lower 4, so they have to be merged manually
-	
-	u8 *dest;
 	// all but bubsymphb (bootleg board with different sprite gfx layout), 2mindril (no sprite gfx roms)
-	if (gfx(5) != nullptr) {
-		gfx_element *spr_gfx = gfx(2);
-		gfx_element *spr_gfx_hi = gfx(5);
-
-		// allocate memory for the assembled data
-		m_decoded_gfx5 = std::make_unique<u8[]>(spr_gfx->elements() * spr_gfx->width() * spr_gfx->height());
-
-		// loop over elements
-		dest = m_decoded_gfx5.get();
-		for (int c = 0; c < spr_gfx->elements(); c++) {
-			const u8 *c1base = spr_gfx->get_data(c);
-			const u8 *c3base = spr_gfx_hi->get_data(c);
-
-			// loop over height
-			for (int y = 0; y < spr_gfx->height(); y++) {
-				const u8 *c1 = c1base;
-				const u8 *c3 = c3base;
-
-				/* Expand 2bits into 4bits format */
-				for (int x = 0; x < spr_gfx->width(); x++)
-					*dest++ = (*c1++ & 0xf) | (*c3++ & 0x30);
-
-				c1base += spr_gfx->rowbytes();
-				c3base += spr_gfx_hi->rowbytes();
-			}
-		}
-
-		spr_gfx->set_raw_layout(m_decoded_gfx5.get(), spr_gfx->width(), spr_gfx->height(), spr_gfx->elements(), 8 * spr_gfx->width(), 8 * spr_gfx->width() * spr_gfx->height());
-		set_gfx(5, nullptr);
-	}
-
-	if (gfx(4) != nullptr) {
-		gfx_element *pf_gfx = gfx(3);
-		gfx_element *pf_gfx_hi = gfx(4);
-
-		// allocate memory for the assembled data
-		m_decoded_gfx4 = std::make_unique<u8[]>(pf_gfx->elements() * pf_gfx->width() * pf_gfx->height());
-
-		// loop over elements
-		dest = m_decoded_gfx4.get();
-		for (int c = 0; c < pf_gfx->elements(); c++) {
-			const u8 *c0base = pf_gfx->get_data(c);
-			const u8 *c2base = pf_gfx_hi->get_data(c);
-
-			// loop over height
-			for (int y = 0; y < pf_gfx->height(); y++) {
-				const u8 *c0 = c0base;
-				const u8 *c2 = c2base;
-
-				for (int x = 0; x < pf_gfx->width(); x++)
-					*dest++ = (*c0++ & 0xf) | (*c2++ & 0x30);
-
-				c0base += pf_gfx->rowbytes();
-				c2base += pf_gfx_hi->rowbytes();
-			}
-		}
-
-		pf_gfx->set_raw_layout(m_decoded_gfx4.get(), pf_gfx->width(), pf_gfx->height(), pf_gfx->elements(), 8 * pf_gfx->width(), 8 * pf_gfx->width() * pf_gfx->height());
-		set_gfx(4, nullptr);
-	}
+	if (gfx(5))
+		decode_hi(2, 5, m_decoded_gfx5);
+	if (gfx(4))
+		decode_hi(3, 4, m_decoded_gfx4);
 }
 
 void FDP::map_ram(address_map &map) {

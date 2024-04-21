@@ -57,7 +57,6 @@ public:
 	required_device<palette_device> m_palette_12bit;
 	
 protected:
-	
 	using fixed8 = s32;
 	
 	struct tempsprite {
@@ -237,6 +236,8 @@ protected:
 
 	std::unique_ptr<u8[]> m_decoded_gfx4;
 	std::unique_ptr<u8[]> m_decoded_gfx5;
+	
+	void decode_hi(int low, int high, std::unique_ptr<u8[]> &decoded);
 	
 	u16 *m_pf_data[8]{};
 	tilemap_t *m_tilemap[8] = {nullptr};
