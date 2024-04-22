@@ -27,32 +27,25 @@ void FDP::device_start() {
 
 /******************************************************************************/
 
-static const gfx_layout charlayout = {
+#define INTERLEAVE44(start)  4+(start), 0+(start), 12+(start), 8+(start)
+#define STEP8_INV(START,STEP)  STEP4_INV((START)+4*(STEP),STEP),STEP4_INV(START,STEP)
+
+static const gfx_layout layout_pivot = {
 	8,8,
-	256,
+	RGN_FRAC(1,1),
 	4,
-	{ 0,1,2,3 },
-	{ 20, 16, 28, 24, 4, 0, 12, 8 },
+	{ STEP4(0,1) },
+	{ INTERLEAVE44(16), INTERLEAVE44(0) },
 	{ STEP8(0,4*8) },
 	32*8
 };
 
-static const gfx_layout pivotlayout = {
-	8,8,
-	2048,
-	4,
-	{ 0,1,2,3 },
-	{ 20, 16, 28, 24, 4, 0, 12, 8 },
-	{ STEP8(0,4*8) },
-	32*8
-};
-
-// the roms are loaded into a u64 array with the upper 16 bits unused:
-// [AAAA AAAA AAAA AAAA|BBBB BBBB BBBB BBBB|CCCC CCCC CCCC CCCC|.... .... .... ....]
-// (so +64 bits means  the next address)
+// the roms connected in parallel to a 48-bit bus:
+// [AAAA AAAA AAAA AAAA|BBBB BBBB BBBB BBBB|CCCC CCCC CCCC CCCC]
 // each item contains data for 8 pixels (6 bits per pixel)
-// [0000 1111 2222 3333|4444 5555 6666 7777|0123 4567 0123 4567|.... .... .... ....]
+// [0000 1111 2222 3333|4444 5555 6666 7777|0123 4567 0123 4567]
 // note that the upper two bitplanes are stored in a different order than the first four
+#define NEXT 48
 
 static const gfx_layout layout_tile_low = {
  	16,16,
@@ -60,31 +53,30 @@ static const gfx_layout layout_tile_low = {
 	4,
 	{ STEP4(0,1) },
 	{
-		1*4, 0*4, 3*4, 2*4, 5*4, 4*4, 7*4, 6*4,
-		64+1*4, 64+0*4, 64+3*4, 64+2*4, 64+5*4, 64+4*4, 64+7*4, 64+6*4,
+		INTERLEAVE44(0     ), INTERLEAVE44(4*4     ),
+		INTERLEAVE44(0+NEXT), INTERLEAVE44(4*4+NEXT),
 	},
-	{ STEP16(0, 64*2) },
-	64*2*16
+	{ STEP16(0, NEXT*2) },
+	NEXT*2*16
 };
-
-#define STEP8_INV(START,STEP)       STEP4_INV((START)+4*(STEP),STEP),STEP4_INV(START,STEP)
 
 static const gfx_layout layout_tile_hi = {
 	16,16,
 	RGN_FRAC(1,1),
 	6,
-	{ STEP2_INV(32, 8), 48,48,48,48, },
-	{ STEP8_INV(0, 1), STEP8_INV(64, 1) },
-	{ STEP16(0, 64*2) },
-	64*2*16
+	{ STEP2_INV(32, 8), 0,0,0,0, },
+	{ STEP8_INV(0, 1), STEP8_INV(NEXT, 1) },
+	{ STEP16(0, NEXT*2) },
+	NEXT*2*16
 };
 
-// the roms are loaded into a u32 array with the upper 8 bits unused:
-// [AAAA AAAA|BBBB BBBB|CCCC CCCC|.... ....]
-// (so +32 bits means  the next address)
+// the roms are connected in parallel to a 24-bit bus:
+// [AAAA AAAA|BBBB BBBB|CCCC CCCC]
 // each item contains data for 4 pixels (6 bits per pixel)
-// [1111 0000|3333 2222|3322 1100|.... ....]
+// [1111 0000|3333 2222|3322 1100]
 // note that the upper two bitplanes are stored in a different order than the first four
+#undef NEXT
+#define NEXT 24
 
 static const gfx_layout layout_sprite_low = {
 	16,16,
@@ -92,37 +84,37 @@ static const gfx_layout layout_sprite_low = {
 	4,
 	{ STEP4(0,1) },
 	{
-		32*0+4, 32*0+0, 32*0+12, 32*0+8,
-		32*1+4, 32*1+0, 32*1+12, 32*1+8,
-		32*2+4, 32*2+0, 32*2+12, 32*2+8,
-		32*3+4, 32*3+0, 32*3+12, 32*3+8,
+		INTERLEAVE44(NEXT*0),
+		INTERLEAVE44(NEXT*1),
+		INTERLEAVE44(NEXT*2),
+		INTERLEAVE44(NEXT*3),
 	},
-	{ STEP16(0, 32*4) },
-	32*4*16,
+	{ STEP16(0, NEXT*4) },
+	NEXT*4*16,
 };
 
 static const gfx_layout layout_sprite_hi = {
 	16,16,
 	RGN_FRAC(1,1),
 	6,
-	{ STEP2(16, 1), 24,24,24,24 },
+	{ STEP2(16, 1), 0,0,0,0 },
 	{ 
-		STEP4_INV(32*0, 2),
-		STEP4_INV(32*1, 2),
-		STEP4_INV(32*2, 2),
-		STEP4_INV(32*3, 2),
+		STEP4_INV(NEXT*0, 2),
+		STEP4_INV(NEXT*1, 2),
+		STEP4_INV(NEXT*2, 2),
+		STEP4_INV(NEXT*3, 2),
 	},
-	{ STEP16(0, 32*4) },
-	32*4*16,
+	{ STEP16(0, NEXT*4) },
+	NEXT*4*16,
 };
 
 GFXDECODE_MEMBER( FDP::gfxinfo )
-	GFXDECODE_DEVICE( nullptr,      0, charlayout,             0x0000, 0x0400>>4 ) /* Dynamically modified */
-	GFXDECODE_DEVICE( nullptr,      0, pivotlayout,            0x0000, 0x0400>>4 ) /* Dynamically modified */
-	GFXDECODE_DEVICE( "sprites",    0, layout_sprite_low,      0x1000, 0x1000>>4 ) // low 4bpp of 6bpp sprite data
-	GFXDECODE_DEVICE( "tiles",      0, layout_tile_low,        0x0000, 0x2000>>4 ) // low 4bpp of 6bpp tilemap data
-	GFXDECODE_DEVICE( "tiles",      0, layout_tile_hi,    0x0000, 0x2000>>4 ) // hi 2bpp of 6bpp tilemap data
-	GFXDECODE_DEVICE( "sprites",    0, layout_sprite_hi,  0x1000, 0x1000>>4 ) // hi 2bpp of 6bpp sprite data
+	GFXDECODE_DEVICE( nullptr,   0, layout_pivot,      0x0000, 0x0400>>4 ) /* Dynamically modified */
+	GFXDECODE_DEVICE( nullptr,   0, layout_pivot,      0x0000, 0x0400>>4 ) /* Dynamically modified */
+	GFXDECODE_DEVICE( "sprites", 0, layout_sprite_low, 0x1000, 0x1000>>4 ) // low 4bpp of 6bpp sprite data
+	GFXDECODE_DEVICE( "tiles",   0, layout_tile_low,   0x0000, 0x2000>>4 ) // low 4bpp of 6bpp tilemap data
+	GFXDECODE_DEVICE( "tiles",   0, layout_tile_hi,    0x0000, 0x2000>>4 ) // hi 2bpp of 6bpp tilemap data
+	GFXDECODE_DEVICE( "sprites", 0, layout_sprite_hi,  0x1000, 0x1000>>4 ) // hi 2bpp of 6bpp sprite data
 GFXDECODE_END
 
 static const gfx_layout bubsympb_sprite_layout = {
@@ -146,12 +138,12 @@ static const gfx_layout bubsympb_layout_5bpp_tile_hi = {
 };
 
 GFXDECODE_MEMBER( FDP::gfx_bubsympb )
-	GFXDECODE_DEVICE( nullptr,      0, charlayout,                  0x0000, 0x0400>>4) /* Dynamically modified */
-	GFXDECODE_DEVICE( nullptr,      0, pivotlayout,                 0x0000, 0x0400>>4) /* Dynamically modified */
-	GFXDECODE_DEVICE( "sprites",    0, bubsympb_sprite_layout,      0x1000, 0x1000>>4) /* Sprites area (6bpp planar) */
-	GFXDECODE_DEVICE( "tiles",      0, gfx_16x16x4_packed_lsb,      0x0000, 0x2000>>4) // low 4bpp of 5bpp tilemap data
-	GFXDECODE_DEVICE( "tiles_hi",   0, bubsympb_layout_5bpp_tile_hi,0x0000, 0x2000>>4) // hi 1bpp of 5bpp tilemap data
-	GFXDECODE_DEVICE( "sprites",    0, bubsympb_sprite_layout,      0x1000, 0x1000>>4) // dummy gfx duplicate for avoid crash
+	GFXDECODE_DEVICE( nullptr,    0, layout_pivot,                 0x0000, 0x0400>>4) /* Dynamically modified */
+	GFXDECODE_DEVICE( nullptr,    0, layout_pivot,                 0x0000, 0x0400>>4) /* Dynamically modified */
+	GFXDECODE_DEVICE( "sprites",  0, bubsympb_sprite_layout,       0x1000, 0x1000>>4) /* Sprites area (6bpp planar) */
+	GFXDECODE_DEVICE( "tiles",    0, gfx_16x16x4_packed_lsb,       0x0000, 0x2000>>4) // low 4bpp of 5bpp tilemap data
+	GFXDECODE_DEVICE( "tiles_hi", 0, bubsympb_layout_5bpp_tile_hi, 0x0000, 0x2000>>4) // hi 1bpp of 5bpp tilemap data
+	GFXDECODE_DEVICE( "sprites",  0, bubsympb_sprite_layout,       0x1000, 0x1000>>4) // dummy gfx duplicate for avoid crash
 GFXDECODE_END
 
 	// the upper 2 bitplanes are interleaved differently than the lower 4, so they have to be merged manually
@@ -343,8 +335,8 @@ void FDP::create_tilemaps(bool extend)
 	m_vram_layer->set_transparent_pen(0);
 	m_pixel_layer->set_transparent_pen(0);
 	
-	gfx(0)->set_source(reinterpret_cast<u8 *>(m_charram.target()));
-	gfx(1)->set_source(reinterpret_cast<u8 *>(m_pivotram.target()));
+	gfx(0)->set_source_and_total(reinterpret_cast<u8 *>(m_charram.target()), 256);
+	gfx(1)->set_source_and_total(reinterpret_cast<u8 *>(m_pivotram.target()), 2048);
 	
 	m_spritelist = std::make_unique<tempsprite[]>(0x400);
 	m_sprite_end = &m_spritelist[0];
