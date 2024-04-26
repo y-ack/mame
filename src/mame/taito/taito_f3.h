@@ -270,8 +270,7 @@ protected:
 		inline int x_index(int x) const;
 		bool blend_select(const u8 *line_flags, int x) const { return false; };
 
-		bool used(int y) const { return true; };
-		u8 debug_index{0};
+		u8 index{0};
 		const char *debug_name() const { return "MX"; };
 	};
 
@@ -284,8 +283,6 @@ protected:
 		bool blend_select(const u8 *line_flags, int x) const { return blend_select_v; };
 		inline bool layer_enable() const;
 
-		u8 (*sprite_pri_usage)[256]{nullptr};
-		bool used(int y) const { return (*sprite_pri_usage)[y] & (1<<debug_index); }
 		const char *debug_name() const { return "SP"; };
 	};
 
@@ -325,8 +322,6 @@ protected:
 		inline int y_index(int y) const;
 		inline int x_index(int x) const;
 		bool blend_select(const u8 *line_flags, int x) const { return BIT(line_flags[x], 0); };
-		u8 (*pf_row_usage)[32]{nullptr};
-		inline bool used(int y) const;
 		const char *debug_name() const { return "PF"; };
 	};
 
@@ -370,8 +365,9 @@ protected:
 	bool m_sprite_trails = false;
 	u16 *m_pf_data[8]{};
 	int m_sprite_lag = 0;
+	u8 m_textram_row_usage[64]{};
 	u8 m_sprite_pri_row_usage[256]{};
-	u8 m_tilemap_row_usage[4][32]{};
+	u8 m_tilemap_row_usage[8][32]{};
 	bitmap_ind8 m_pri_alp_bitmap;
 	bitmap_ind16 m_sprite_framebuffer{};
 	u16 m_width_mask = 0;
@@ -419,7 +415,10 @@ protected:
 	void render_line(pen_t *dst, const mix_pix &z);
 	void scanline_draw(bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	template<typename Mix>
-	std::vector<clip_plane_inf> calc_clip(const clip_plane_inf (&clip)[NUM_CLIPPLANES], const Mix line);
+	std::vector<clip_plane_inf> calc_clip(const clip_plane_inf (&clip)[NUM_CLIPPLANES], const Mix &layer);
+	inline bool used(const pivot_inf &layer, int y) const;
+	inline bool used(const sprite_inf &layer, int y) const;
+	inline bool used(const playfield_inf &layer, int y) const;
 	template<typename Mix>
 	bool mix_line(const Mix &gfx, mix_pix &z, pri_mode &pri, const f3_line_inf &line, const clip_plane_inf &range);
 
