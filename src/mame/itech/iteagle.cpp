@@ -140,8 +140,8 @@ public:
 	required_device<iteagle_fpga_device> m_fpga;
 	required_device<iteagle_eeprom_device> m_eeprom;
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 	void gtfore05(machine_config &config);
 	void gtfore02(machine_config &config);
 	void gtfore03(machine_config &config);
@@ -195,7 +195,7 @@ void iteagle_state::iteagle(machine_config &config)
 	m_fpga->guny_callback().set_ioport("GUNY1");
 
 	es1373_device &pci_sound(ES1373(config, PCI_ID_SOUND, 0));
-	pci_sound.add_route(0, PCI_ID_SOUND":lspeaker", 1.0).add_route(1, PCI_ID_SOUND":rspeaker", 1.0);
+	pci_sound.add_route(0, PCI_ID_SOUND":speaker", 1.0, 0).add_route(1, PCI_ID_SOUND":speaker", 1.0, 1);
 	pci_sound.irq_handler().set_inputline(m_maincpu, MIPS3_IRQ3);
 
 	voodoo_3_pci_device &voodoo(VOODOO_3_PCI(config, PCI_ID_VIDEO, 0, m_maincpu, "screen"));

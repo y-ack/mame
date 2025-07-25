@@ -67,8 +67,8 @@ public:
 
 protected:
 	virtual void device_post_load() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	required_device<cpu_device> m_maincpu;
@@ -105,9 +105,9 @@ private:
 	TMS340X0_FROM_SHIFTREG_CB_MEMBER(from_shiftreg);
 	TMS340X0_SCANLINE_IND16_CB_MEMBER(scanline_update);
 
-	void m68030_1_map(address_map &map);
-	void m68030_2_map(address_map &map);
-	void tms_program_map(address_map &map);
+	void m68030_1_map(address_map &map) ATTR_COLD;
+	void m68030_2_map(address_map &map) ATTR_COLD;
+	void tms_program_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -560,16 +560,15 @@ void skimaxx_state::skimaxx(machine_config &config)
 	PALETTE(config, "palette", palette_device::RGB_555);
 
 	// sound hardware
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
-	OKIM6295(config, "oki1", XTAL(4'000'000), okim6295_device::PIN7_LOW).add_route(ALL_OUTPUTS, "lspeaker", 1.0);     // ?
+	OKIM6295(config, "oki1", XTAL(4'000'000), okim6295_device::PIN7_LOW).add_route(ALL_OUTPUTS, "speaker", 1.0, 0);     // ?
 
-	OKIM6295(config, "oki2", XTAL(4'000'000)/2, okim6295_device::PIN7_HIGH).add_route(ALL_OUTPUTS, "lspeaker", 1.0);  // ?
+	OKIM6295(config, "oki2", XTAL(4'000'000)/2, okim6295_device::PIN7_HIGH).add_route(ALL_OUTPUTS, "speaker", 1.0, 0);  // ?
 
-	OKIM6295(config, "oki3", XTAL(4'000'000), okim6295_device::PIN7_LOW).add_route(ALL_OUTPUTS, "rspeaker", 1.0);     // ?
+	OKIM6295(config, "oki3", XTAL(4'000'000), okim6295_device::PIN7_LOW).add_route(ALL_OUTPUTS, "speaker", 1.0, 1);     // ?
 
-	OKIM6295(config, "oki4", XTAL(4'000'000)/2, okim6295_device::PIN7_HIGH).add_route(ALL_OUTPUTS, "rspeaker", 1.0);  // ?
+	OKIM6295(config, "oki4", XTAL(4'000'000)/2, okim6295_device::PIN7_HIGH).add_route(ALL_OUTPUTS, "speaker", 1.0, 1);  // ?
 }
 
 

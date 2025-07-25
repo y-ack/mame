@@ -61,9 +61,8 @@
 static constexpr int CLOCKS_PER_SAMPLE = 64;
 
 
-
 // device type definition
-DEFINE_DEVICE_TYPE(K053260, k053260_device, "k053260", "K053260 KDSC")
+DEFINE_DEVICE_TYPE(K053260, k053260_device, "k053260", "Konami 053260 KDSC")
 
 
 // Pan multipliers.  Set according to integer angles in degrees, amusingly.
@@ -309,11 +308,11 @@ void k053260_device::write(offs_t offset, u8 data)
 //  sound_stream_update - handle a stream update
 //-------------------------------------------------
 
-void k053260_device::sound_stream_update(sound_stream &stream, std::vector<read_stream_view> const &inputs, std::vector<write_stream_view> &outputs)
+void k053260_device::sound_stream_update(sound_stream &stream)
 {
 	if (m_mode & 2)
 	{
-		for (int j = 0; j < outputs[0].samples(); j++)
+		for (int j = 0; j < stream.samples(); j++)
 		{
 			s32 buffer[2] = {0, 0};
 
@@ -323,14 +322,9 @@ void k053260_device::sound_stream_update(sound_stream &stream, std::vector<read_
 					voice.play(buffer);
 			}
 
-			outputs[0].put_int_clamp(j, buffer[0], 32768);
-			outputs[1].put_int_clamp(j, buffer[1], 32768);
+			stream.put_int_clamp(0, j, buffer[0], 32768);
+			stream.put_int_clamp(1, j, buffer[1], 32768);
 		}
-	}
-	else
-	{
-		outputs[0].fill(0);
-		outputs[1].fill(0);
 	}
 }
 

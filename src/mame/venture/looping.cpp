@@ -109,9 +109,9 @@ public:
 	void init_looping();
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	void flip_screen_x_w(int state);
@@ -142,10 +142,10 @@ private:
 	INTERRUPT_GEN_MEMBER(interrupt);
 	void draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-	void io_map(address_map &map);
-	void map(address_map &map);
-	void sound_io_map(address_map &map);
-	void sound_map(address_map &map);
+	void io_map(address_map &map) ATTR_COLD;
+	void map(address_map &map) ATTR_COLD;
+	void sound_io_map(address_map &map) ATTR_COLD;
+	void sound_map(address_map &map) ATTR_COLD;
 
 	// memory pointers
 	required_shared_ptr<uint8_t> m_videoram;
@@ -716,7 +716,7 @@ static INPUT_PORTS_START( looping )
 	PORT_DIPSETTING(    0x0a, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(    0x0e, DEF_STR( 1C_7C ) )
-	PORT_DIPSETTING(    0x00, "1 Coin/10 Credits" )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_10C ) )
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )    PORT_DIPLOCATION("DSW:4")  // Check code at 0x2c00
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )

@@ -185,7 +185,7 @@ public:
 	void shadfrce(machine_config &config);
 
 protected:
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	required_device<cpu_device> m_maincpu;
@@ -237,8 +237,8 @@ private:
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	void draw_sprites(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-	void main_map(address_map &map);
-	void sound_map(address_map &map);
+	void main_map(address_map &map) ATTR_COLD;
+	void sound_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -795,20 +795,19 @@ void shadfrce_state::shadfrce(machine_config &config)
 	BUFFERED_SPRITERAM16(config, m_spvideoram);
 
 	// sound hardware
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	GENERIC_LATCH_8(config, m_soundlatch);
 	m_soundlatch->data_pending_callback().set_inputline(m_audiocpu, INPUT_LINE_NMI);
 
 	ym2151_device &ymsnd(YM2151(config, "ymsnd", XTAL(3'579'545)));      // verified on PCB
 	ymsnd.irq_handler().set_inputline(m_audiocpu, 0);
-	ymsnd.add_route(0, "lspeaker", 0.50);
-	ymsnd.add_route(1, "rspeaker", 0.50);
+	ymsnd.add_route(0, "speaker", 0.50, 0);
+	ymsnd.add_route(1, "speaker", 0.50, 1);
 
 	OKIM6295(config, m_oki, XTAL(13'495'200) / 8, okim6295_device::PIN7_HIGH); // verified on PCB
-	m_oki->add_route(ALL_OUTPUTS, "lspeaker", 0.50);
-	m_oki->add_route(ALL_OUTPUTS, "rspeaker", 0.50);
+	m_oki->add_route(ALL_OUTPUTS, "speaker", 0.50, 0);
+	m_oki->add_route(ALL_OUTPUTS, "speaker", 0.50, 1);
 }
 
 // Rom Defs.

@@ -155,6 +155,7 @@ device_rs232_port_interface::~device_rs232_port_interface()
 
 
 #include "ie15.h"
+#include "hlemouse.h"
 #include "keyboard.h"
 #include "loopback.h"
 #include "mboardd.h"
@@ -168,6 +169,7 @@ device_rs232_port_interface::~device_rs232_port_interface()
 #include "sun_kbd.h"
 #include "swtpc8212.h"
 #include "terminal.h"
+#include "votraxtnt.h"
 
 template class device_finder<device_rs232_port_interface, false>;
 template class device_finder<device_rs232_port_interface, true>;
@@ -179,6 +181,7 @@ void default_rs232_devices(device_slot_interface &device)
 	device.option_add("keyboard",      SERIAL_KEYBOARD);
 	device.option_add("loopback",      RS232_LOOPBACK);
 	device.option_add("mockingboard",  SERIAL_MOCKINGBOARD_D);
+	device.option_add("msystems_mouse",MSYSTEMS_HLE_SERIAL_MOUSE);
 	device.option_add("nss_tvi",       NSS_TVINTERFACE);
 	device.option_add("null_modem",    NULL_MODEM);
 	device.option_add("patch",         RS232_PATCH_BOX);
@@ -190,4 +193,5 @@ void default_rs232_devices(device_slot_interface &device)
 	device.option_add("sunkbd",        SUN_KBD_ADAPTOR);
 	device.option_add("swtpc8212",     SERIAL_TERMINAL_SWTPC8212);
 	device.option_add("terminal",      SERIAL_TERMINAL);
+	device.option_add("votraxtnt",     SERIAL_VOTRAXTNT);
 }

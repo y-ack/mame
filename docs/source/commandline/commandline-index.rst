@@ -246,7 +246,6 @@ Core Sound Options
 
 | :ref:`samplerate <mame-commandline-samplerate>`
 | :ref:`[no]samples <mame-commandline-nosamples>`
-| :ref:`[no]compressor <mame-commandline-nocompressor>`
 | :ref:`volume <mame-commandline-volume>`
 | :ref:`sound <mame-commandline-sound>`
 | :ref:`audio_latency <mame-commandline-audiolatency>`
@@ -298,6 +297,7 @@ Core Debugging Options
 | :ref:`debugscript <mame-commandline-debugscript>`
 | :ref:`[no]update_in_pause <mame-commandline-updateinpause>`
 | :ref:`watchdog <mame-commandline-watchdog>`
+| :ref:`debugger_host <mame-commandline-debuggerhost>`
 | :ref:`debugger_port <mame-commandline-debuggerport>`
 | :ref:`debugger_font <mame-commandline-debuggerfont>`
 | :ref:`debugger_font_size <mame-commandline-debuggerfontsize>`
@@ -350,14 +350,6 @@ HTTP Server Options
 | :ref:`http <mame-commandline-http>`
 | :ref:`http_port <mame-commandline-httpport>`
 | :ref:`http_root <mame-commandline-httproot>`
-
-
-PortAudio Options
-~~~~~~~~~~~~~~~~~
-
-| :ref:`pa_api <mame-commandline-paapi>`
-| :ref:`pa_device <mame-commandline-padevice>`
-| :ref:`pa_latency <mame-commandline-palatency>`
 
 
 Windows-Specific Command-line Options

@@ -48,7 +48,7 @@ public:
 	void horse(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	required_device<cpu_device> m_maincpu;
@@ -66,8 +66,8 @@ private:
 	void output_w(u8 data);
 
 	u32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	void horse_io_map(address_map &map);
-	void horse_map(address_map &map);
+	void horse_io_map(address_map &map) ATTR_COLD;
+	void horse_map(address_map &map) ATTR_COLD;
 };
 
 void horse_state::machine_start()
@@ -152,7 +152,7 @@ static INPUT_PORTS_START( horse )
 	PORT_DIPSETTING(    0x05, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( 1C_7C ) )
-	PORT_DIPSETTING(    0x00, "1 Coin/10 Credits" )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_10C ) )
 	PORT_DIPNAME( 0x08, 0x08, "UNK04" )             PORT_DIPLOCATION("SW:4")
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )

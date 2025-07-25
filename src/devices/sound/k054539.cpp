@@ -16,7 +16,7 @@
 #include "logmacro.h"
 
 
-DEFINE_DEVICE_TYPE(K054539, k054539_device, "k054539", "K054539 ADPCM")
+DEFINE_DEVICE_TYPE(K054539, k054539_device, "k054539", "Konami 054539 ADPCM")
 
 k054539_device::k054539_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: device_t(mconfig, K054539, tag, owner, clock)
@@ -25,7 +25,6 @@ k054539_device::k054539_device(const machine_config &mconfig, const char *tag, d
 	, flags(0)
 	, reverb_pos(0)
 	, cur_ptr(0)
-	, cur_limit(0)
 	, rom_addr(0)
 	, stream(nullptr)
 	, m_timer(nullptr)
@@ -104,7 +103,7 @@ void k054539_device::keyoff(int channel)
 		regs[0x22c] &= ~(1 << channel);
 }
 
-void k054539_device::sound_stream_update(sound_stream &stream, std::vector<read_stream_view> const &inputs, std::vector<write_stream_view> &outputs)
+void k054539_device::sound_stream_update(sound_stream &stream)
 {
 	static constexpr double VOL_CAP = 1.80;
 
@@ -116,13 +115,9 @@ void k054539_device::sound_stream_update(sound_stream &stream, std::vector<read_
 	int16_t *rbase = (int16_t *)&ram[0];
 
 	if(!(regs[0x22f] & 1))
-	{
-		outputs[0].fill(0);
-		outputs[1].fill(0);
 		return;
-	}
 
-	for(int sample = 0; sample != outputs[0].samples(); sample++) {
+	for(int sample = 0; sample != stream.samples(); sample++) {
 		double lval, rval;
 		if(!(flags & DISABLE_REVERB))
 			lval = rval = rbase[reverb_pos];
@@ -131,7 +126,7 @@ void k054539_device::sound_stream_update(sound_stream &stream, std::vector<read_
 		rbase[reverb_pos] = 0;
 
 		for(int ch=0; ch<8; ch++)
-			if(regs[0x22c] & (1<<ch)) {
+			if(BIT(regs[0x22c], ch)) {
 				unsigned char *base1 = regs + 0x20*ch;
 				unsigned char *base2 = regs + 0x200 + 0x2*ch;
 				channel *chan = channels + ch;
@@ -300,8 +295,8 @@ void k054539_device::sound_stream_update(sound_stream &stream, std::vector<read_
 				}
 			}
 		reverb_pos = (reverb_pos + 1) & 0x1fff;
-		outputs[0].put_int(sample, lval, 32768);
-		outputs[1].put_int(sample, rval, 32768);
+		stream.put_int(0, sample, lval, 32768);
+		stream.put_int(1, sample, rval, 32768);
 	}
 }
 
@@ -318,11 +313,11 @@ void k054539_device::init_chip()
 	memset(posreg_latch, 0, sizeof(posreg_latch)); //*
 	flags |= UPDATE_AT_KEYON; //* make it default until proven otherwise
 
-	ram = std::make_unique<uint8_t []>(0x4000);
+	ram = std::make_unique<uint8_t []>(0x8000);
 
 	reverb_pos = 0;
 	cur_ptr = 0;
-	memset(&ram[0], 0, 0x4000);
+	memset(&ram[0], 0, 0x8000);
 
 	stream = stream_alloc(0, 2, clock() / 384);
 
@@ -333,10 +328,9 @@ void k054539_device::init_chip()
 	save_item(NAME(flags));
 
 	save_item(NAME(regs));
-	save_pointer(NAME(ram), 0x4000);
+	save_pointer(NAME(ram), 0x8000);
 	save_item(NAME(reverb_pos));
 	save_item(NAME(cur_ptr));
-	save_item(NAME(cur_limit));
 	save_item(NAME(rom_addr));
 
 	save_item(NAME(m_timer_state));
@@ -433,16 +427,15 @@ void k054539_device::write(offs_t offset, u8 data)
 		break;
 
 		case 0x22d:
-			if(rom_addr == 0x80)
-				ram[cur_ptr] = data;
-			cur_ptr++;
-			if(cur_ptr == cur_limit)
-				cur_ptr = 0;
+			if(rom_addr == 0x80) {
+				offs_t const addr = (cur_ptr & 0x3fff) | ((cur_ptr & 0x10000) >> 2);
+				ram[addr] = data;
+			}
+			cur_ptr = (cur_ptr + 1) & 0x1ffff;
 		break;
 
 		case 0x22e:
 			rom_addr = data;
-			cur_limit = rom_addr == 0x80 ? 0x4000 : 0x20000;
 			cur_ptr = 0;
 		break;
 
@@ -477,7 +470,6 @@ void k054539_device::write(offs_t offset, u8 data)
 
 void k054539_device::device_post_load()
 {
-	cur_limit = rom_addr == 0x80 ? 0x4000 : 0x20000;
 }
 
 u8 k054539_device::read(offs_t offset)
@@ -485,13 +477,10 @@ u8 k054539_device::read(offs_t offset)
 	switch(offset) {
 	case 0x22d:
 		if(regs[0x22f] & 0x10) {
-			uint8_t res = (rom_addr == 0x80) ? ram[cur_ptr] : read_byte((0x20000*rom_addr)+cur_ptr);
-			if (!machine().side_effects_disabled())
-			{
-				cur_ptr++;
-				if(cur_ptr == cur_limit)
-					cur_ptr = 0;
-			}
+			offs_t const addr = (cur_ptr & 0x3fff) | ((cur_ptr & 0x10000) >> 2);
+			uint8_t res = (rom_addr == 0x80) ? ram[addr] : read_byte((0x20000*rom_addr) + cur_ptr);
+			if(!machine().side_effects_disabled())
+				cur_ptr = (cur_ptr + 1) & 0x1ffff;
 			return res;
 		} else
 			return 0;
@@ -550,7 +539,7 @@ void k054539_device::device_reset()
 {
 	regs[0x22c] = 0;
 	regs[0x22f] = 0;
-	memset(&ram[0], 0, 0x4000);
+	memset(&ram[0], 0, 0x8000);
 	m_timer->enable(false);
 }
 

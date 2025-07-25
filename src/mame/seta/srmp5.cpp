@@ -129,13 +129,13 @@ private:
 	uint8_t cmd1_r();
 	uint8_t cmd2_r();
 	uint8_t cmd_stat8_r();
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
 	void st0016_rom_bank_w(uint8_t data);
-	void srmp5_mem(address_map &map);
-	void st0016_io(address_map &map);
-	void st0016_mem(address_map &map);
+	void srmp5_mem(address_map &map) ATTR_COLD;
+	void st0016_io(address_map &map) ATTR_COLD;
+	void st0016_mem(address_map &map) ATTR_COLD;
 };
 
 
@@ -599,11 +599,10 @@ void srmp5_state::srmp5(machine_config &config)
 #endif
 
 	// TODO: Mono?
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
-	m_soundcpu->add_route(0, "lspeaker", 1.0);
-	m_soundcpu->add_route(1, "rspeaker", 1.0);
+	m_soundcpu->add_route(0, "speaker", 1.0, 0);
+	m_soundcpu->add_route(1, "speaker", 1.0, 1);
 }
 
 

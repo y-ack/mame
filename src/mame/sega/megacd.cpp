@@ -296,8 +296,8 @@ void sega_segacd_device::device_add_mconfig(machine_config &config)
 	config.set_default_layout(layout_megacd);
 
 	RF5C164(config, m_rfsnd, SEGACD_CLOCK); // or Sega 315-5476A
-	m_rfsnd->add_route( 0, ":lspeaker", 0.50 );
-	m_rfsnd->add_route( 1, ":rspeaker", 0.50 );
+	m_rfsnd->add_route( 0, ":speaker", 0.50, 0 );
+	m_rfsnd->add_route( 1, ":speaker", 0.50, 1 );
 	m_rfsnd->set_addrmap(0, &sega_segacd_device::segacd_pcm_map);
 
 	NVRAM(config, "backupram", nvram_device::DEFAULT_ALL_0);
@@ -1790,7 +1790,7 @@ void sega_segacd_device::device_reset()
 	// time.  Changing the CDHock timer to 50hz from 75hz also stops the hang, but then the video is
 	// too slow and has bad sound.  -- Investigate!
 	// Update: removed, otherwise megacdj and megacd2j will black screen with no cdrom inserted.
-	//m_scdcpu->set_clock_scale(1.5000f);
+	//m_scdcpu->set_clock_scale(1.5);
 
 
 	// initialize some stuff on reset

@@ -66,6 +66,11 @@
 
 namespace {
 
+// If legacy mouse to pointer event translation is enabled, translated
+// WM_POINTER* events have pointer ID zero.  Assume this will never be
+// seen for "real" pointer events.
+constexpr WORD MOUSE_POINTER_ID = 0;
+
 constexpr unsigned get_pointer_buttons(WPARAM wparam)
 {
 	return
@@ -146,37 +151,10 @@ bool windows_osd_interface::window_init()
 	return true;
 }
 
-void windows_osd_interface::update_slider_list()
-{
-	for (const auto &window : osd_common_t::window_list())
-	{
-		// check if any window has dirty sliders
-		if (window->has_renderer() && window->renderer().sliders_dirty())
-		{
-			build_slider_list();
-			return;
-		}
-	}
-}
 
 int windows_osd_interface::window_count()
 {
 	return osd_common_t::window_list().size();
-}
-
-void windows_osd_interface::build_slider_list()
-{
-	m_sliders.clear();
-
-	for (const auto &window : osd_common_t::window_list())
-	{
-		if (window->has_renderer())
-		{
-			// take the sliders of the first window
-			std::vector<ui::menu_item> window_sliders = window->renderer().get_slider_list();
-			m_sliders.insert(m_sliders.end(), window_sliders.begin(), window_sliders.end());
-		}
-	}
 }
 
 void windows_osd_interface::add_audio_to_recording(const int16_t *buffer, int samples_this_frame)
@@ -185,6 +163,7 @@ void windows_osd_interface::add_audio_to_recording(const int16_t *buffer, int sa
 	if (window)
 		window->renderer().add_audio_to_recording(buffer, samples_this_frame);
 }
+
 
 //============================================================
 //  winwindow_exit
@@ -490,7 +469,7 @@ void windows_osd_interface::process_events(bool ingame, bool nodispatch)
 
 			// dispatch if necessary
 			if (dispatch)
-				winwindow_dispatch_message(machine(), &message);
+				winwindow_dispatch_message(machine(), message);
 		}
 	}
 	while (ui_temp_pause > 0);
@@ -506,12 +485,12 @@ void windows_osd_interface::process_events(bool ingame, bool nodispatch)
 //  (main thread)
 //============================================================
 
-void winwindow_dispatch_message(running_machine &machine, MSG *message)
+void winwindow_dispatch_message(running_machine &machine, MSG const &message)
 {
 	assert(GetCurrentThreadId() == main_threadid);
 
 	// dispatch our special communication messages
-	switch (message->message)
+	switch (message.message)
 	{
 		// special case for quit
 		case WM_QUIT:
@@ -520,8 +499,8 @@ void winwindow_dispatch_message(running_machine &machine, MSG *message)
 
 		// everything else dispatches normally
 		default:
-			TranslateMessage(message);
-			DispatchMessage(message);
+			TranslateMessage(&message);
+			DispatchMessage(&message);
 			break;
 	}
 }
@@ -1224,8 +1203,8 @@ LRESULT CALLBACK win_window_info::video_window_proc(HWND wnd, UINT message, WPAR
 	// TODO: other pointer events?
 	//case WM_POINTERACTIVATE:
 	//case WM_POINTERDEVICECHANGE:
-	//case WM_POINTERDEVICECINRANGE:
-	//case WM_POINTERDEVICECOUTOFRANGE:
+	//case WM_POINTERDEVICEINRANGE:
+	//case WM_POINTERDEVICEOUTOFRANGE:
 	//case WM_POINTERROUTEDAWAY:
 	//case WM_POINTERROUTEDRELEASED:
 	//case WM_POINTERROUTEDTO:
@@ -1969,11 +1948,8 @@ void win_window_info::pointer_capture_changed(WPARAM wparam, LPARAM lparam)
 	if (m_active_pointers.end() != info)
 	{
 		// treat this as the pointer being stolen - fail any gestures
-		if (BIT(info->buttons, 0))
-		{
-			assert(0 <= info->clickcnt);
+		if (BIT(info->buttons, 0) && (0 < info->clickcnt))
 			info->clickcnt = -info->clickcnt;
-		}
 
 		// push to UI manager and dump pointer data
 		machine().ui_input().push_pointer_abort(
@@ -2054,9 +2030,8 @@ void win_window_info::mouse_updated(WPARAM wparam, LPARAM lparam)
 void win_window_info::expire_pointer(std::vector<win_pointer_info>::iterator info, POINT const &where, bool canceled)
 {
 	// leaving implicitly releases buttons, so check hold/drag if necessary
-	if (BIT(info->buttons, 0))
+	if (BIT(info->buttons, 0) && (0 < info->clickcnt))
 	{
-		assert(0 <= info->clickcnt);
 		if (!canceled)
 		{
 			auto const now(std::chrono::steady_clock::now());
@@ -2252,9 +2227,8 @@ std::vector<win_window_info::win_pointer_info>::iterator win_window_info::find_p
 
 std::vector<win_window_info::win_pointer_info>::iterator win_window_info::map_mouse_pointer()
 {
-	WORD const ptrid(~WORD(0));
-	auto found(std::lower_bound(m_active_pointers.begin(), m_active_pointers.end(), ptrid, &win_pointer_info::compare));
-	if ((m_active_pointers.end() != found) && (found->ptrid == ptrid))
+	auto found(std::lower_bound(m_active_pointers.begin(), m_active_pointers.end(), MOUSE_POINTER_ID, &win_pointer_info::compare));
+	if ((m_active_pointers.end() != found) && (found->ptrid == MOUSE_POINTER_ID))
 		return found;
 
 	if ((sizeof(m_next_pointer) * 8) <= m_next_pointer)
@@ -2284,7 +2258,7 @@ std::vector<win_window_info::win_pointer_info>::iterator win_window_info::map_mo
 
 		found = m_active_pointers.emplace(
 				found,
-				win_pointer_info(ptrid, PT_MOUSE, m_next_pointer, devpos->second));
+				win_pointer_info(MOUSE_POINTER_ID, PT_MOUSE, m_next_pointer, devpos->second));
 		m_pointer_mask |= decltype(m_pointer_mask)(1) << m_next_pointer;
 		do
 		{
@@ -2303,9 +2277,8 @@ std::vector<win_window_info::win_pointer_info>::iterator win_window_info::map_mo
 
 std::vector<win_window_info::win_pointer_info>::iterator win_window_info::find_mouse_pointer()
 {
-	WORD const ptrid(~WORD(0));
-	auto const found(std::lower_bound(m_active_pointers.begin(), m_active_pointers.end(), ptrid, &win_pointer_info::compare));
-	if ((m_active_pointers.end() != found) && (found->ptrid == ptrid))
+	auto const found(std::lower_bound(m_active_pointers.begin(), m_active_pointers.end(), MOUSE_POINTER_ID, &win_pointer_info::compare));
+	if ((m_active_pointers.end() != found) && (found->ptrid == MOUSE_POINTER_ID))
 		return found;
 	else
 		return m_active_pointers.end();
@@ -2319,17 +2292,17 @@ std::vector<win_window_info::win_pointer_info>::iterator win_window_info::find_m
 
 bool winwindow_qt_filter(void *message)
 {
-	MSG *msg = (MSG *)message;
+	MSG *const msg = reinterpret_cast<MSG *>(message);
 
-	if(is_mame_window(msg->hwnd) || (!msg->hwnd && (msg->message >= WM_USER)))
+	if (is_mame_window(msg->hwnd) || (!msg->hwnd && (msg->message >= WM_USER)))
 	{
 		LONG_PTR ptr;
-		if(msg->hwnd) // get the machine associated with this window
+		if (msg->hwnd) // get the machine associated with this window
 			ptr = GetWindowLongPtr(msg->hwnd, GWLP_USERDATA);
 		else // any one will have to do
 			ptr = (LONG_PTR)osd_common_t::window_list().front().get();
 
-		winwindow_dispatch_message(((win_window_info *)ptr)->machine(), msg);
+		winwindow_dispatch_message(reinterpret_cast<win_window_info *>(ptr)->machine(), *msg);
 		return true;
 	}
 	return false;

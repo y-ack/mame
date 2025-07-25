@@ -264,10 +264,10 @@ public:
 	void konamigv(machine_config &config);
 
 protected:
-	void konamigv_map(address_map &map);
+	void konamigv_map(address_map &map) ATTR_COLD;
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	void btc_trackball_w(offs_t offset, uint16_t data, uint16_t mem_mask = ~0);
 
@@ -275,8 +275,8 @@ protected:
 	void scsi_dma_write(uint32_t *p_n_psxram, uint32_t n_address, int32_t n_size);
 	void scsi_drq(int state);
 
-	void btchamp_map(address_map &map);
-	void kdeadeye_map(address_map &map);
+	void btchamp_map(address_map &map) ATTR_COLD;
+	void kdeadeye_map(address_map &map) ATTR_COLD;
 
 	TIMER_CALLBACK_MEMBER(scsi_dma_transfer);
 
@@ -308,12 +308,12 @@ public:
 	void simpbowl(machine_config &config);
 
 private:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 	uint16_t flash_r(offs_t offset);
 	void flash_w(offs_t offset, uint16_t data);
 
-	void simpbowl_map(address_map &map);
+	void simpbowl_map(address_map &map) ATTR_COLD;
 
 	required_device_array<fujitsu_29f016a_device, 4> m_flash8;
 
@@ -342,7 +342,7 @@ public:
 	uint16_t tokimeki_serial_r();
 	void tokimeki_serial_w(offs_t offset, uint16_t data, uint16_t mem_mask = ~0);
 
-	DECLARE_CUSTOM_INPUT_MEMBER(tokimeki_device_check_r);
+	ioport_value tokimeki_device_check_r();
 	void tokimeki_device_check_w(int state);
 
 private:
@@ -353,12 +353,12 @@ private:
 		PRINTER_PAGE_HEIGHT = 600,
 	};
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	uint32_t printer_screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
-	void tmosh_map(address_map &map);
+	void tmosh_map(address_map &map) ATTR_COLD;
 
 	TIMER_CALLBACK_MEMBER(heartbeat_timer_tick);
 	TIMER_CALLBACK_MEMBER(printing_status_timeout);
@@ -455,7 +455,7 @@ void konamigv_state::scsi_dma_read(uint32_t *p_n_psxram, uint32_t n_address, int
 	m_dma_offset = n_address;
 	m_dma_size = n_size * 4;
 	m_dma_is_write = false;
-	m_dma_timer->adjust(attotime::from_usec(10));
+	m_dma_timer->adjust(attotime::zero);
 }
 
 void konamigv_state::scsi_dma_write(uint32_t *p_n_psxram, uint32_t n_address, int32_t n_size)
@@ -464,12 +464,13 @@ void konamigv_state::scsi_dma_write(uint32_t *p_n_psxram, uint32_t n_address, in
 	m_dma_offset = n_address;
 	m_dma_size = n_size * 4;
 	m_dma_is_write = true;
-	m_dma_timer->adjust(attotime::from_usec(10));
+	m_dma_timer->adjust(attotime::zero);
 }
 
 TIMER_CALLBACK_MEMBER(konamigv_state::scsi_dma_transfer)
 {
-	if (m_dma_requested && m_dma_data_ptr != nullptr && m_dma_size > 0)
+	// TODO: Figure out proper DMA timings
+	while (m_dma_requested && m_dma_data_ptr != nullptr && m_dma_size > 0)
 	{
 		if (m_dma_is_write)
 			m_ncr53cf96->dma_w(util::little_endian_cast<const uint8_t>(m_dma_data_ptr)[m_dma_offset]);
@@ -479,15 +480,12 @@ TIMER_CALLBACK_MEMBER(konamigv_state::scsi_dma_transfer)
 		m_dma_offset++;
 		m_dma_size--;
 	}
-
-	if (m_dma_requested && m_dma_size > 0)
-		m_dma_timer->adjust(attotime::from_usec(10));
 }
 
 void konamigv_state::scsi_drq(int state)
 {
 	if (!m_dma_requested && state)
-		m_dma_timer->adjust(attotime::from_usec(10));
+		m_dma_timer->adjust(attotime::zero);
 
 	m_dma_requested = state;
 }
@@ -582,8 +580,8 @@ void konamigv_state::konamigv(machine_config &config)
 	NSCSI_CONNECTOR(config, "scsi:4").option_set("cdrom", NSCSI_XM5401).machine_config(
 			[](device_t *device)
 			{
-				device->subdevice<cdda_device>("cdda")->add_route(0, "^^lspeaker", 1.0);
-				device->subdevice<cdda_device>("cdda")->add_route(1, "^^rspeaker", 1.0);
+				device->subdevice<cdda_device>("cdda")->add_route(0, "^^speaker", 1.0, 0);
+				device->subdevice<cdda_device>("cdda")->add_route(1, "^^speaker", 1.0, 1);
 			});
 	NSCSI_CONNECTOR(config, "scsi:7").option_set("ncr53cf96", NCR53CF96).clock(32_MHz_XTAL/2).machine_config(
 			[this](device_t *device)
@@ -599,12 +597,11 @@ void konamigv_state::konamigv(machine_config &config)
 	SCREEN(config, m_screen, SCREEN_TYPE_RASTER);
 
 	// sound hardware
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	spu_device &spu(SPU(config, "spu", XTAL(67'737'600)/2, subdevice<psxcpu_device>("maincpu")));
-	spu.add_route(1, "lspeaker", 0.75); // to verify the channels, btchamp's "game sound test" in the sound test menu speaks the words left, right, center
-	spu.add_route(0, "rspeaker", 0.75);
+	spu.add_route(1, "speaker", 0.75, 0); // to verify the channels, btchamp's "game sound test" in the sound test menu speaks the words left, right, center
+	spu.add_route(0, "speaker", 0.75, 1);
 }
 
 
@@ -623,7 +620,7 @@ static INPUT_PORTS_START( konamigv )
 	PORT_BIT( 0x00000400, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x00000800, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_SERVICE_NO_TOGGLE( 0x00001000, IP_ACTIVE_LOW )
-	PORT_BIT( 0x00002000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER( "eeprom", eeprom_serial_93cxx_device, do_read )
+	PORT_BIT( 0x00002000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_93cxx_device::do_read))
 	PORT_BIT( 0x00004000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00008000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0xffff0000, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -667,9 +664,9 @@ static INPUT_PORTS_START( konamigv )
 	PORT_BIT( 0xffff0000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START("EEPROMOUT")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, di_write)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, cs_write)
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, clk_write)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_93cxx_device::di_write))
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_93cxx_device::cs_write))
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_93cxx_device::clk_write))
 INPUT_PORTS_END
 
 // The Simpsons Bowling
@@ -1124,7 +1121,7 @@ void tokimeki_state::tmoshsp_init()
 	m_printer_is_manual_layout = true;
 }
 
-CUSTOM_INPUT_MEMBER(tokimeki_state::tokimeki_device_check_r)
+ioport_value tokimeki_state::tokimeki_device_check_r()
 {
 	return BIT(m_device_val, 15);
 }
@@ -1144,13 +1141,13 @@ static INPUT_PORTS_START( tmosh )
 
 	PORT_MODIFY("P2")
 	PORT_BIT( 0xfffffbff, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x00000400, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(tokimeki_state, tokimeki_device_check_r)
+	PORT_BIT( 0x00000400, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(tokimeki_state::tokimeki_device_check_r))
 
 	PORT_MODIFY("P3_P4")
 	PORT_BIT( 0xffffffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_MODIFY("EEPROMOUT")
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_MEMBER(tokimeki_state, tokimeki_device_check_w)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_MEMBER(FUNC(tokimeki_state::tokimeki_device_check_w))
 
 	// valid range for heart rate is 50-150, anything outside of that range makes the game show ? in the heart rate meter area
 	// Setting the value here to 0 will act as if the player's hand is off the sensor, and anything after that acts as 50-100
@@ -1158,7 +1155,7 @@ static INPUT_PORTS_START( tmosh )
 	PORT_START("HEARTBEAT")
 	PORT_BIT( 0x0ff, 31,             IPT_PADDLE_V ) PORT_SENSITIVITY(10) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_MINMAX(0, 101) PORT_NAME("Heart Rate") PORT_CONDITION("CONTROLS", 0x01, EQUALS, 0x01)
 	PORT_BIT( 0x0ff,  0,             IPT_CUSTOM ) PORT_CONDITION("CONTROLS", 0x01, EQUALS, 0x00)
-	PORT_BIT( 0x100, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_WRITE_LINE_MEMBER(tokimeki_state, heartbeat_pulse_w) PORT_NAME("Heartbeat Pulse") PORT_CONDITION("CONTROLS", 0x01, EQUALS, 0x00)
+	PORT_BIT( 0x100, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_WRITE_LINE_MEMBER(FUNC(tokimeki_state::heartbeat_pulse_w)) PORT_NAME("Heartbeat Pulse") PORT_CONDITION("CONTROLS", 0x01, EQUALS, 0x00)
 
 	// value read during calibration is treated as zero
 	// scale in operator menu goes from 0x00-0xff but only 0x00-0x80 is actually usable in-game

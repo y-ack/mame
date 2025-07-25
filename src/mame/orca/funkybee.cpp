@@ -108,8 +108,8 @@ public:
 	void funkybee(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	// memory pointers
@@ -141,8 +141,8 @@ private:
 	void draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect);
 	void draw_columns(bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-	void prg_map(address_map &map);
-	void io_map(address_map &map);
+	void prg_map(address_map &map) ATTR_COLD;
+	void io_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -384,6 +384,8 @@ static INPUT_PORTS_START( funkybeeb )
 	PORT_DIPSETTING(    0x00, "4" )
 INPUT_PORTS_END
 
+// NOTE: available manual claims Lives 3-6 as per skylancre set, without an explicit mention to Esco Trading.
+// Is current skylancr set an earlier/location test rev? Also cfr. arguably worse enemy colors right off the bat.
 static INPUT_PORTS_START( skylancr )
 	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
@@ -421,7 +423,7 @@ static INPUT_PORTS_START( skylancr )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_6C ) )
-	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )        PORT_DIPLOCATION("SW1:4,3") // Also affects bonus life
+	PORT_DIPNAME( 0x30, 0x10, DEF_STR( Lives ) )        PORT_DIPLOCATION("SW1:4,3") // Also affects bonus life
 	PORT_DIPSETTING(    0x30, "1" )             // Bonus life at 20000 and 50000
 	PORT_DIPSETTING(    0x20, "2" )             // Bonus life at 20000 and 50000
 	PORT_DIPSETTING(    0x10, "3" )             // Bonus life at 40000 and 70000

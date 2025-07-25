@@ -263,7 +263,7 @@ Namco System 21 Video Hardware
 #include "namco_c139.h"
 #include "namco_c148.h"
 #include "namco68.h"
-#include "namco_c67.h"
+#include "namco_dsp.h"
 #include "namcos21_dsp_c67.h"
 #include "namco_c355spr.h"
 #include "namcos21_3d.h"
@@ -309,8 +309,8 @@ public:
 	void init_solvalou();
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	required_device<cpu_device> m_maincpu;
@@ -359,12 +359,12 @@ private:
 
 	void configure_c68_namcos21(machine_config &config);
 
-	void common_map(address_map &map);
-	void master_map(address_map &map);
-	void slave_map(address_map &map);
+	void common_map(address_map &map) ATTR_COLD;
+	void master_map(address_map &map) ATTR_COLD;
+	void slave_map(address_map &map) ATTR_COLD;
 
-	void sound_map(address_map &map);
-	void c140_map(address_map &map);
+	void sound_map(address_map &map) ATTR_COLD;
+	void c140_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -840,16 +840,15 @@ void namcos21_c67_state::namcos21(machine_config &config)
 	m_c355spr->set_color_base(0x1000);
 	m_c355spr->set_external_prifill(true);
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	C140(config, m_c140, 49.152_MHz_XTAL / 2304);
 	m_c140->set_addrmap(0, &namcos21_c67_state::c140_map);
 	m_c140->int1_callback().set_inputline(m_audiocpu, M6809_FIRQ_LINE);
-	m_c140->add_route(0, "lspeaker", 0.50);
-	m_c140->add_route(1, "rspeaker", 0.50);
+	m_c140->add_route(0, "speaker", 0.50, 0);
+	m_c140->add_route(1, "speaker", 0.50, 1);
 
-	YM2151(config, "ymsnd", 3.579545_MHz_XTAL).add_route(0, "lspeaker", 0.30).add_route(1, "rspeaker", 0.30);
+	YM2151(config, "ymsnd", 3.579545_MHz_XTAL).add_route(0, "speaker", 0.30, 0).add_route(1, "speaker", 0.30, 1);
 }
 
 void namcos21_c67_state::aircomb(machine_config &config)

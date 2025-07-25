@@ -108,8 +108,8 @@ public:
 	void konamigq(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	emu_timer *m_dma_timer;
@@ -144,10 +144,10 @@ private:
 	void scsi_dma_write( uint32_t *p_n_psxram, uint32_t n_address, int32_t n_size );
 	void scsi_drq(int state);
 
-	void konamigq_dasp_map(address_map &map);
-	void konamigq_k054539_map(address_map &map);
-	void konamigq_map(address_map &map);
-	void konamigq_sound_map(address_map &map);
+	void konamigq_dasp_map(address_map &map) ATTR_COLD;
+	void konamigq_k054539_map(address_map &map) ATTR_COLD;
+	void konamigq_map(address_map &map) ATTR_COLD;
+	void konamigq_sound_map(address_map &map) ATTR_COLD;
 };
 
 /* EEPROM */
@@ -287,7 +287,7 @@ void konamigq_state::scsi_dma_read( uint32_t *p_n_psxram, uint32_t n_address, in
 	m_dma_offset = n_address;
 	m_dma_size = n_size * 4;
 	m_dma_is_write = false;
-	m_dma_timer->adjust(attotime::from_usec(10));
+	m_dma_timer->adjust(attotime::zero);
 }
 
 void konamigq_state::scsi_dma_write( uint32_t *p_n_psxram, uint32_t n_address, int32_t n_size )
@@ -296,12 +296,13 @@ void konamigq_state::scsi_dma_write( uint32_t *p_n_psxram, uint32_t n_address, i
 	m_dma_offset = n_address;
 	m_dma_size = n_size * 4;
 	m_dma_is_write = true;
-	m_dma_timer->adjust(attotime::from_usec(10));
+	m_dma_timer->adjust(attotime::zero);
 }
 
 TIMER_CALLBACK_MEMBER(konamigq_state::scsi_dma_transfer)
 {
-	if (m_dma_requested && m_dma_data_ptr != nullptr && m_dma_size > 0)
+	// TODO: Figure out proper DMA timings
+	while (m_dma_requested && m_dma_data_ptr != nullptr && m_dma_size > 0)
 	{
 		if (m_dma_is_write)
 			m_ncr53cf96->dma_w(util::little_endian_cast<const uint8_t>(m_dma_data_ptr)[m_dma_offset]);
@@ -311,15 +312,12 @@ TIMER_CALLBACK_MEMBER(konamigq_state::scsi_dma_transfer)
 		m_dma_offset++;
 		m_dma_size--;
 	}
-
-	if (m_dma_requested && m_dma_size > 0)
-		m_dma_timer->adjust(attotime::from_usec(10));
 }
 
 void konamigq_state::scsi_drq(int state)
 {
 	if (!m_dma_requested && state)
-		m_dma_timer->adjust(attotime::from_usec(10));
+		m_dma_timer->adjust(attotime::zero);
 
 	m_dma_requested = state;
 }
@@ -330,7 +328,6 @@ void konamigq_state::machine_start()
 	save_item(NAME(m_sound_intck));
 
 	m_dma_timer = timer_alloc(FUNC(konamigq_state::scsi_dma_transfer), this);
-	m_dma_timer->adjust(attotime::never);
 }
 
 void konamigq_state::machine_reset()
@@ -381,8 +378,7 @@ void konamigq_state::konamigq(machine_config &config)
 	SCREEN(config, "screen", SCREEN_TYPE_RASTER);
 
 	/* sound hardware */
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	K056800(config, m_k056800, XTAL(18'432'000));
 	m_k056800->int_callback().set_inputline(m_soundcpu, M68K_IRQ_1);
@@ -390,13 +386,13 @@ void konamigq_state::konamigq(machine_config &config)
 	k054539_device &k054539_1(K054539(config, "k054539_1", XTAL(18'432'000)));
 	k054539_1.set_addrmap(0, &konamigq_state::konamigq_k054539_map);
 	k054539_1.timer_handler().set(FUNC(konamigq_state::k054539_irq_gen));
-	k054539_1.add_route(0, "lspeaker", 1.0);
-	k054539_1.add_route(1, "rspeaker", 1.0);
+	k054539_1.add_route(0, "speaker", 1.0, 0);
+	k054539_1.add_route(1, "speaker", 1.0, 1);
 
 	k054539_device &k054539_2(K054539(config, "k054539_2", XTAL(18'432'000)));
 	k054539_2.set_addrmap(0, &konamigq_state::konamigq_k054539_map);
-	k054539_2.add_route(0, "lspeaker", 1.0);
-	k054539_2.add_route(1, "rspeaker", 1.0);
+	k054539_2.add_route(0, "speaker", 1.0, 0);
+	k054539_2.add_route(1, "speaker", 1.0, 1);
 }
 
 static INPUT_PORTS_START( konamigq )
@@ -475,12 +471,12 @@ static INPUT_PORTS_START( konamigq )
 	PORT_DIPSETTING(    0x00, "Independent" )
 	PORT_BIT( 0x00000040, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00000080, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x00010000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, do_read)
+	PORT_BIT( 0x00010000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_93cxx_device::do_read))
 
 	PORT_START( "EEPROMOUT" )
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, di_write)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, cs_write)
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, clk_write)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_93cxx_device::di_write))
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_93cxx_device::cs_write))
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_93cxx_device::clk_write))
 INPUT_PORTS_END
 
 ROM_START( cryptklr )
@@ -493,7 +489,7 @@ ROM_START( cryptklr )
 	ROM_REGION32_LE( 0x080000, "maincpu:rom", 0 ) /* bios */
 	ROM_LOAD( "420b03.27p",   0x0000000, 0x080000, CRC(aab391b1) SHA1(bf9dc7c0c8168c22a4be266fe6a66d3738df916b) )
 
-	DISK_REGION( "scsi:0:harddisk:image" )
+	DISK_REGION( "scsi:0:harddisk" )
 	DISK_IMAGE( "420uaa04", 0, SHA1(67cb1418fc0de2a89fc61847dc9efb9f1bebb347) )
 ROM_END
 

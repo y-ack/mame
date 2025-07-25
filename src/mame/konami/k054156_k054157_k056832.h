@@ -8,7 +8,7 @@
 #include "k055555.h" // still needs k055555_get_palette_index
 #include "tilemap.h"
 
-#define K056832_CB_MEMBER(_name)   void _name(int layer, int *code, int *color, int *flags, int *priority)
+#define K056832_CB_MEMBER(_name)   void _name(int layer, int *code, int *color, int *flags, int *priority, u16 attr)
 
 #define K056832_PAGE_COUNT 16
 
@@ -31,7 +31,7 @@ class k055555_device;
 class k056832_device : public device_t, public device_gfx_interface
 {
 public:
-	using tile_delegate = device_delegate<void (int layer, int *code, int *color, int *flags, int *priority)>;
+	using tile_delegate = device_delegate<void (int layer, int *code, int *color, int *flags, int *priority, u16 attr)>;
 
 	template <typename T> k056832_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, T &&mixer_tag)
 		: k056832_device(mconfig, tag, owner, clock)
@@ -63,6 +63,7 @@ public:
 	u32 k_6bpp_rom_long_r(offs_t offset, u32 mem_mask = ~0);
 	u16 rom_word_r(offs_t offset);
 	u8 konmedal_rom_r(offs_t offset);
+	u8 chusenoh_rom_r(offs_t offset);
 	u16 piratesh_rom_r(offs_t offset);
 	u16 mw_rom_word_r(offs_t offset);
 	u16 bishi_rom_word_r(offs_t offset);
@@ -105,7 +106,7 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 	virtual void device_post_load() override;
 
 private:

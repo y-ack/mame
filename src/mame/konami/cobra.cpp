@@ -645,20 +645,20 @@ public:
 	void init_racjamdx();
 	void init_bujutsu();
 	void init_cobra();
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 	uint32_t screen_update_cobra(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	INTERRUPT_GEN_MEMBER(cobra_vblank);
 	void cobra_video_exit();
 	int decode_debug_state_value(int v);
 	void cobra(machine_config &config);
 	void bujutsu(machine_config &config);
-	void cobra_gfx_map(address_map &map);
-	void cobra_main_map(address_map &map);
-	void cobra_sub_map(address_map &map);
+	void cobra_gfx_map(address_map &map) ATTR_COLD;
+	void cobra_main_map(address_map &map) ATTR_COLD;
+	void cobra_sub_map(address_map &map) ATTR_COLD;
 
-	void rf5c400_map(address_map& map);
+	void rf5c400_map(address_map &map) ATTR_COLD;
 
 	uint32_t mpc106_pci_r(int function, int reg, uint32_t mem_mask);
 	void mpc106_pci_w(int function, int reg, uint32_t data, uint32_t mem_mask);
@@ -2978,17 +2978,16 @@ void cobra_state::cobra(machine_config &config)
 	m_screen->set_screen_update(FUNC(cobra_state::screen_update_cobra));
 	PALETTE(config, m_palette).set_entries(65536);
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	rf5c400_device &rfsnd(RF5C400(config, "rfsnd", XTAL(16'934'400)));
 	rfsnd.set_addrmap(0, &cobra_state::rf5c400_map);
-	rfsnd.add_route(0, "lspeaker", 1.0);
-	rfsnd.add_route(1, "rspeaker", 1.0);
+	rfsnd.add_route(0, "speaker", 1.0, 0);
+	rfsnd.add_route(1, "speaker", 1.0, 1);
 
-	DMADAC(config, m_dmadac[0]).add_route(ALL_OUTPUTS, "lspeaker", 1.0);
+	DMADAC(config, m_dmadac[0]).add_route(ALL_OUTPUTS, "speaker", 1.0, 0);
 
-	DMADAC(config, m_dmadac[1]).add_route(ALL_OUTPUTS, "rspeaker", 1.0);
+	DMADAC(config, m_dmadac[1]).add_route(ALL_OUTPUTS, "speaker", 1.0, 1);
 
 	M48T58(config, "m48t58", 0);
 

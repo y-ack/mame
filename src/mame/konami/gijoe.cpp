@@ -154,17 +154,17 @@ private:
 	uint16_t control2_r();
 	void control2_w(offs_t offset, uint16_t data, uint16_t mem_mask = ~0);
 	void sound_irq_w(uint16_t data);
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 	uint32_t screen_update_gijoe(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	INTERRUPT_GEN_MEMBER(gijoe_interrupt);
 	TIMER_CALLBACK_MEMBER(dmaend_callback);
 	void gijoe_objdma();
 	K056832_CB_MEMBER(tile_callback);
 	K053246_CB_MEMBER(sprite_callback);
-	void gijoe_map(address_map &map);
-	void sound_map(address_map &map);
+	void gijoe_map(address_map &map) ATTR_COLD;
+	void sound_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -281,7 +281,7 @@ uint32_t gijoe_state::screen_update_gijoe(screen_device &screen, bitmap_ind16 &b
 		if (dirty)
 		{
 			m_avac_occupancy[i] = 0;
-			m_k056832->mark_plane_dirty( i);
+			m_k056832->mark_plane_dirty(i);
 		}
 	}
 
@@ -455,14 +455,14 @@ static INPUT_PORTS_START( gijoe )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_START2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_START3 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW,  IPT_START4 )
-	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_er5911_device, do_read)
-	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_er5911_device, ready_read)
+	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_er5911_device::do_read))
+	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_er5911_device::ready_read))
 	PORT_SERVICE_NO_TOGGLE( 0x0800, IP_ACTIVE_LOW )
 
 	PORT_START("EEPROMOUT")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_er5911_device, di_write)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_er5911_device, cs_write)
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_er5911_device, clk_write)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_er5911_device::di_write))
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_er5911_device::cs_write))
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_er5911_device::clk_write))
 
 	PORT_START("SYSTEM")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW,  IPT_COIN1 )
@@ -542,15 +542,14 @@ void gijoe_state::gijoe(machine_config &config)
 	K053251(config, m_k053251, 0);
 
 	/* sound hardware */
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
-	K054321(config, m_k054321, "lspeaker", "rspeaker");
+	K054321(config, m_k054321, "speaker");
 
 	k054539_device &k054539(K054539(config, "k054539", XTAL(18'432'000)));
 	k054539.timer_handler().set_inputline("audiocpu", INPUT_LINE_NMI);
-	k054539.add_route(0, "rspeaker", 1.0);
-	k054539.add_route(1, "lspeaker", 1.0);
+	k054539.add_route(0, "speaker", 1.0, 1);
+	k054539.add_route(1, "speaker", 1.0, 0);
 }
 
 

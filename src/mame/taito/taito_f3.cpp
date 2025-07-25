@@ -14,6 +14,9 @@
     Other Issues:
     - Find how this HW drives the CRTC and verify timing of interrupts
 
+    TODO:
+    - Use TC0640FIO device implementation from taito/taitoio.cpp
+
     Taito custom chips on motherboard:
 
         TC0630FDP "Display Processor" - Graphics (sprites, playfields, prio, lineram...)
@@ -36,14 +39,14 @@
 /******************************************************************************/
 
 template <int Num>
-CUSTOM_INPUT_MEMBER(taito_f3_state::f3_analog_r)
+ioport_value taito_f3_state::f3_analog_r()
 {
 	const int data = m_dial[Num]->read();
 	return ((data & 0xf) << 12) | ((data & 0xff0) >> 4);
 }
 
 template <int Num>
-CUSTOM_INPUT_MEMBER(taito_f3_state::f3_coin_r)
+ioport_value taito_f3_state::f3_coin_r()
 {
 	return m_coin_word[Num];
 }
@@ -197,7 +200,7 @@ void taito_f3_state::bubsympb_oki_map(address_map &map)
 
 /******************************************************************************/
 
-CUSTOM_INPUT_MEMBER( taito_f3_state::eeprom_read )
+ioport_value taito_f3_state::eeprom_read()
 {
 	return m_eepromin->read();
 }
@@ -222,8 +225,8 @@ static INPUT_PORTS_START( f3 )
 	PORT_BIT( 0x00002000, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x00004000, IP_ACTIVE_LOW, IPT_START3 )
 	PORT_BIT( 0x00008000, IP_ACTIVE_LOW, IPT_START4 )
-	PORT_BIT( 0x00ff0000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(taito_f3_state, eeprom_read)
-	PORT_BIT( 0xff000000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(taito_f3_state, eeprom_read)
+	PORT_BIT( 0x00ff0000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(taito_f3_state::eeprom_read))
+	PORT_BIT( 0xff000000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(taito_f3_state::eeprom_read))
 
 	/* MSW: Coin counters/lockouts are readable, LSW: Joysticks (Player 1 & 2) */
 	PORT_START("IN.1")
@@ -236,7 +239,7 @@ static INPUT_PORTS_START( f3 )
 	PORT_BIT( 0x00000040, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x00000080, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0000ff00, IP_ACTIVE_HIGH, IPT_UNKNOWN ) /* These must be high */
-	PORT_BIT( 0xffff0000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(taito_f3_state, f3_coin_r<0>)
+	PORT_BIT( 0xffff0000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(taito_f3_state::f3_coin_r<0>))
 
 	/* Player 3 & 4 fire buttons (Player 2 top fire buttons in Kaiser Knuckle) */
 	PORT_START("IN.4")
@@ -262,21 +265,21 @@ static INPUT_PORTS_START( f3 )
 	PORT_BIT( 0x00000040, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x00000080, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x0000ff00, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0xffff0000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(taito_f3_state, f3_coin_r<1>)
+	PORT_BIT( 0xffff0000, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(taito_f3_state::f3_coin_r<1>))
 
 	/* Analog control 1 */
 	PORT_START("IN.2")
-	PORT_BIT( 0x0000ffff, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(taito_f3_state, f3_analog_r<0>)
+	PORT_BIT( 0x0000ffff, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(taito_f3_state::f3_analog_r<0>))
 	PORT_BIT( 0xffff0000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	/* Analog control 2 */
 	PORT_START("IN.3")
-	PORT_BIT( 0x0000ffff, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(taito_f3_state, f3_analog_r<1>)
+	PORT_BIT( 0x0000ffff, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(taito_f3_state::f3_analog_r<1>))
 	PORT_BIT( 0xffff0000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	/* These are not read directly, but through PORT_CUSTOMs above */
 	PORT_START("EEPROMIN")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, do_read)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_93cxx_device::do_read))
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED ) /* Another service mode */
@@ -292,9 +295,9 @@ static INPUT_PORTS_START( f3 )
 	PORT_BIT( 0xfff, 0x000, IPT_DIAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(25) PORT_CODE_DEC(KEYCODE_N) PORT_CODE_INC(KEYCODE_M) PORT_PLAYER(2)
 
 	PORT_START( "EEPROMOUT" )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, di_write)
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, clk_write)
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_93cxx_device, cs_write)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_93cxx_device::di_write))
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_93cxx_device::clk_write))
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_93cxx_device::cs_write))
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( kn )
@@ -379,12 +382,11 @@ void taito_f3_state::f3(machine_config &config)
 	TC0630FDP(config, m_fdp, 26.686_MHz_XTAL / 4);
 
 	/* sound hardware */
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	TAITO_EN(config, m_taito_en, 0);
-	m_taito_en->add_route(0, "lspeaker", 1.0);
-	m_taito_en->add_route(1, "rspeaker", 1.0);
+	m_taito_en->add_route(0, "speaker", 1.0, 0);
+	m_taito_en->add_route(1, "speaker", 1.0, 1);
 }
 
 /* These games reprogram the video output registers to display different scanlines,

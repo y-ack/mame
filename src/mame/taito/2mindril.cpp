@@ -62,9 +62,9 @@ public:
 	void init_drill();
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	required_device<screen_device> m_screen;
@@ -91,7 +91,7 @@ private:
 	//INTERRUPT_GEN_MEMBER(drill_device_irq);
 	void irqhandler(int state);
 
-	void drill_map(address_map &map);
+	void drill_map(address_map &map) ATTR_COLD;
 
 	u32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);	
 	
@@ -328,15 +328,14 @@ void _2mindril_state::drill(machine_config &config)
 
 	//PALETTE(config, m_palette).set_format(palette_device::RRRRGGGGBBBBRGBx, 0x2000);
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	ym2610b_device &ymsnd(YM2610B(config, "ymsnd", 16000000/2));
 	ymsnd.irq_handler().set(FUNC(_2mindril_state::irqhandler));
-	ymsnd.add_route(0, "lspeaker", 0.25);
-	ymsnd.add_route(0, "rspeaker", 0.25);
-	ymsnd.add_route(1, "lspeaker", 1.0);
-	ymsnd.add_route(2, "rspeaker", 1.0);
+	ymsnd.add_route(0, "speaker", 0.75, 0);
+	ymsnd.add_route(0, "speaker", 0.75, 1);
+	ymsnd.add_route(1, "speaker", 1.0, 0);
+	ymsnd.add_route(2, "speaker", 1.0, 1);
 }
 
 // temp copied from taito f3

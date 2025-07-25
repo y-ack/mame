@@ -131,9 +131,9 @@ public:
 	void init_bmclubmx();
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	void sndram_bank_w(offs_t offset, uint32_t data, uint32_t mem_mask = ~0);
@@ -159,11 +159,11 @@ private:
 	void ide_interrupt(int state);
 	void draw_sprites( bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	K056832_CB_MEMBER(tile_callback);
-	void k054539_map(address_map &map);
-	void maincpu_djmain(address_map &map);
-	void maincpu_djmaina(address_map &map);
-	void maincpu_djmainj(address_map &map);
-	void maincpu_djmainu(address_map &map);
+	void k054539_map(address_map &map) ATTR_COLD;
+	void maincpu_djmain(address_map &map) ATTR_COLD;
+	void maincpu_djmaina(address_map &map) ATTR_COLD;
+	void maincpu_djmainj(address_map &map) ATTR_COLD;
+	void maincpu_djmainu(address_map &map) ATTR_COLD;
 
 	required_shared_ptr<uint32_t> m_obj_ram;
 	required_device<cpu_device> m_maincpu;
@@ -1700,18 +1700,17 @@ void djmain_state::djmainj(machine_config &config)
 	K055555(config, m_k055555, 0);
 
 	/* sound hardware */
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	k054539_device &k054539_1(K054539(config, "k054539_1", XTAL(18'432'000)));
 	k054539_1.set_addrmap(0, &djmain_state::k054539_map);
-	k054539_1.add_route(0, "lspeaker", 1.0);
-	k054539_1.add_route(1, "rspeaker", 1.0);
+	k054539_1.add_route(0, "speaker", 1.0, 0);
+	k054539_1.add_route(1, "speaker", 1.0, 1);
 
 	k054539_device &k054539_2(K054539(config, "k054539_2", XTAL(18'432'000)));
 	k054539_2.set_addrmap(0, &djmain_state::k054539_map);
-	k054539_2.add_route(0, "lspeaker", 1.0);
-	k054539_2.add_route(1, "rspeaker", 1.0);
+	k054539_2.add_route(0, "speaker", 1.0, 0);
+	k054539_2.add_route(1, "speaker", 1.0, 1);
 }
 
 void djmain_state::djmainu(machine_config &config)

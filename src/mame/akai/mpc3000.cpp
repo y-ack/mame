@@ -107,12 +107,12 @@ private:
 
 	static void floppies(device_slot_interface &device);
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
-	void mpc3000_map(address_map &map);
-	void mpc3000_io_map(address_map &map);
-	void mpc3000_sub_map(address_map &map);
+	void mpc3000_map(address_map &map) ATTR_COLD;
+	void mpc3000_io_map(address_map &map) ATTR_COLD;
+	void mpc3000_sub_map(address_map &map) ATTR_COLD;
 
 	uint16_t dsp_0008_hack_r();
 	void dsp_0008_hack_w(offs_t offset, uint16_t data, uint16_t mem_mask = ~0);
@@ -295,12 +295,11 @@ void mpc3000_state::mpc3000(machine_config &config)
 			spc.out_dreq_callback().set(m_maincpu, FUNC(v53a_device::dreq_w<0>));
 		});
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	L7A1045(config, m_dsp, 16_MHz_XTAL);
-	m_dsp->add_route(0, "lspeaker", 1.0);
-	m_dsp->add_route(1, "rspeaker", 1.0);
+	m_dsp->add_route(0, "speaker", 1.0, 0);
+	m_dsp->add_route(1, "speaker", 1.0, 1);
 }
 
 static INPUT_PORTS_START( mpc3000 )

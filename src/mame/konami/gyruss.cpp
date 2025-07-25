@@ -113,8 +113,8 @@ public:
 	void init_gyruss();
 
 protected:
-	virtual void machine_start() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	// devices
@@ -155,12 +155,12 @@ private:
 	void draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect);
 	template <uint8_t Which> void filter_w(uint8_t data);
 
-	void audio_cpu1_io_map(address_map &map);
-	void audio_cpu1_map(address_map &map);
-	void audio_cpu2_io_map(address_map &map);
-	void audio_cpu2_map(address_map &map);
-	void main_cpu1_map(address_map &map);
-	void main_cpu2_map(address_map &map);
+	void audio_cpu1_io_map(address_map &map) ATTR_COLD;
+	void audio_cpu1_map(address_map &map) ATTR_COLD;
+	void audio_cpu2_io_map(address_map &map) ATTR_COLD;
+	void audio_cpu2_map(address_map &map) ATTR_COLD;
+	void main_cpu1_map(address_map &map) ATTR_COLD;
+	void main_cpu2_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -743,8 +743,7 @@ void gyruss_state::gyruss(machine_config &config)
 	PALETTE(config, m_palette, FUNC(gyruss_state::palette), 16*4+16*16, 32);
 
 	// sound hardware
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	GENERIC_LATCH_8(config, "soundlatch");
 	GENERIC_LATCH_8(config, "soundlatch2");
@@ -788,8 +787,8 @@ void gyruss_state::gyruss(machine_config &config)
 	ay5.add_route(2, "discrete", 1.0, 14);
 
 	DISCRETE(config, m_discrete, sound_discrete);
-	m_discrete->add_route(0, "rspeaker", 1.0);
-	m_discrete->add_route(1, "lspeaker", 1.0);
+	m_discrete->add_route(0, "speaker", 1.0, 1);
+	m_discrete->add_route(1, "speaker", 1.0, 0);
 }
 
 

@@ -71,8 +71,8 @@ public:
 	void init_unkneo();
 
 protected:
-	virtual void machine_start() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	uint8_t calendar_r();
@@ -90,10 +90,10 @@ private:
 	uint32_t screen_update_neoprint(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	uint32_t screen_update_nprsp(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-	void audio_io_map(address_map &map);
-	void audio_map(address_map &map);
-	void neoprint_map(address_map &map);
-	void nprsp_map(address_map &map);
+	void audio_io_map(address_map &map) ATTR_COLD;
+	void audio_map(address_map &map) ATTR_COLD;
+	void neoprint_map(address_map &map) ATTR_COLD;
+	void nprsp_map(address_map &map) ATTR_COLD;
 
 	required_shared_ptr<uint16_t> m_npvidram;
 	required_shared_ptr<uint16_t> m_npvidregs;
@@ -536,17 +536,16 @@ void neoprint_state::neoprint(machine_config &config)
 
 	PALETTE(config, m_palette).set_format(palette_device::xBGR_555, 0x10000);
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	GENERIC_LATCH_8(config, m_soundlatch);
 
 	ym2610_device &ymsnd(YM2610(config, "ymsnd", 24000000 / 3));
 	ymsnd.irq_handler().set_inputline(m_audiocpu, 0);
-	ymsnd.add_route(0, "lspeaker", 0.60);
-	ymsnd.add_route(0, "rspeaker", 0.60);
-	ymsnd.add_route(1, "lspeaker", 1.0);
-	ymsnd.add_route(2, "rspeaker", 1.0);
+	ymsnd.add_route(0, "speaker", 0.60, 0);
+	ymsnd.add_route(0, "speaker", 0.60, 1);
+	ymsnd.add_route(1, "speaker", 1.0, 0);
+	ymsnd.add_route(2, "speaker", 1.0, 1);
 }
 
 MACHINE_RESET_MEMBER(neoprint_state,nprsp)
@@ -582,17 +581,16 @@ void neoprint_state::nprsp(machine_config &config)
 
 	PALETTE(config, m_palette).set_format(palette_device::xBGR_555, 0x10000);
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	GENERIC_LATCH_8(config, m_soundlatch);
 
 	ym2610_device &ymsnd(YM2610(config, "ymsnd", 24000000 / 3));
 	ymsnd.irq_handler().set_inputline(m_audiocpu, 0);
-	ymsnd.add_route(0, "lspeaker", 0.60);
-	ymsnd.add_route(0, "rspeaker", 0.60);
-	ymsnd.add_route(1, "lspeaker", 1.0);
-	ymsnd.add_route(2, "rspeaker", 1.0);
+	ymsnd.add_route(0, "speaker", 0.60, 0);
+	ymsnd.add_route(0, "speaker", 0.60, 1);
+	ymsnd.add_route(1, "speaker", 1.0, 0);
+	ymsnd.add_route(2, "speaker", 1.0, 1);
 }
 
 
@@ -883,6 +881,24 @@ ROM_START( npeurver ) // NP 1.30 19970430 string
 	ROM_LOAD32_BYTE( "p016-c4", 0x200002, 0x80000, CRC(faa3d47e) SHA1(c57324e339e4c6e60000309597889d2e17f0d3bd) )
 ROM_END
 
+ROM_START( npeurver2 ) // NP 1.30 19970430 string
+	ROM_REGION( 0x200000, "maincpu", ROMREGION_ERASEFF )
+	ROM_LOAD16_WORD_SWAP( "p040-ep1.ep1", 0x000000, 0x080000, CRC(225216fc) SHA1(fbe8bd228b39ccde9d1f670d4e85b25dc3144bc0) )
+
+	ROM_REGION( 0x20000, "audiocpu", 0 )
+	ROM_LOAD( "p040-m1.m1", 0x00000, 0x20000, CRC(d9e4e4f5) SHA1(d088880893961886b67d46f1c773258d32010c35) )
+
+	ROM_REGION( 0x200000, "ymsnd:adpcma", 0 )
+	ROM_LOAD( "p040-v1.v1", 0x000000, 0x200000, CRC(fcd12ce6) SHA1(f94cb61b2df7f29292aa33ad2d148dd7b9db3ebe) )
+
+	ROM_REGION( 0x400000, "gfx1", ROMREGION_ERASE00 )
+	ROM_LOAD32_BYTE( "p040-c1.c1", 0x000000, 0x80000, CRC(cd8a80cc) SHA1(6ef252a70782ced471e8ef7aa318e7d6a3f11152) )
+	ROM_LOAD32_BYTE( "p040-c2.c2", 0x000001, 0x80000, CRC(8e7c8071) SHA1(c35640425582438dd799012fba7bf624072c58a5) )
+	ROM_LOAD32_BYTE( "p040-c3.c3", 0x200001, 0x80000, CRC(cd19ec46) SHA1(0485aab3c44753b7d587470bb1460ca90020032c) )
+	ROM_LOAD32_BYTE( "p040-c4.c4", 0x200002, 0x80000, CRC(78334ba1) SHA1(1a6265f0ab889997fe55f998483eff6709488fd5) )
+	// c5-c8 not populated
+ROM_END
+
 /* FIXME: get rid of these two, probably something to do with irq3 and camera / printer devices */
 void neoprint_state::init_npcartv1()
 {
@@ -974,6 +990,7 @@ GAME( 1997, npskv,       0,        neoprint,    neoprint, neoprint_state, init_n
 GAME( 1997, npotogib,    0,        neoprint,    neoprint, neoprint_state, init_npotogib, ROT0, "SNK", "Neo Print - Otogibanashi (Japan) (T4i 3.00)",                   MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS | MACHINE_NOT_WORKING )
 GAME( 1997, nppopeye,    0,        neoprint,    neoprint, neoprint_state, init_98best44, ROT0, "SNK", "Neo Print - Popeye (Japan) (T4i 3.04)",                         MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS | MACHINE_NOT_WORKING )
 GAME( 1997, npeurver,    0,        neoprint,    neoprint, neoprint_state, init_npskv,    ROT0, "SNK", "Neo Print - European Version (World) (T4i 2.00)",               MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS | MACHINE_NOT_WORKING )
+GAME( 1996, npeurver2,   0,        neoprint,    neoprint, neoprint_state, init_npmillen, ROT0, "SNK", "Neo Print - European Version II (World) (T4i 3.07)",            MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS | MACHINE_NOT_WORKING )
 GAME( 1997, npusagif,    0,        neoprint,    neoprint, neoprint_state, init_98best44, ROT0, "SNK", "Neo Print - Usagi Frame (Japan) (T4i 3.07)",                    MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS | MACHINE_NOT_WORKING )
 GAME( 1998, 98best44,    0,        neoprint,    neoprint, neoprint_state, init_98best44, ROT0, "SNK", "Neo Print - '98 NeoPri Best 44 (Japan) (T4i 3.07)",             MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS | MACHINE_NOT_WORKING )
 GAME( 1998, npsprg98,    0,        neoprint,    neoprint, neoprint_state, init_npmillen, ROT0, "SNK", "Neo Print - Spring '98 (T4i 3.07)",                             MACHINE_IMPERFECT_SOUND | MACHINE_IMPERFECT_GRAPHICS | MACHINE_NOT_WORKING )

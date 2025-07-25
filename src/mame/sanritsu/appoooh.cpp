@@ -30,9 +30,9 @@
     04  IN2
 
     write:
-    00  SN76496 #1
-    01  SN76496 #2
-    02  SN76496 #3
+    00  SN76489A #1
+    01  SN76489A #2
+    02  SN76489A #3
     03  MSM5205 address write
     04  bit 0   = NMI enable
         bit 1   = flipscreen
@@ -50,13 +50,13 @@
 ****************************************************************************
 
     Robo Wres 2001
-    Sega, (198x, possibly 1986?)
+    Sega, 1986
 
     Top Board
     =========
     PCB No: 834-5990 SEGA 1986
     CPU   : NEC D315-5179 (Z80?)
-    SOUND : OKI MSM5205 + Resonator 384kHz, SN76489 (x3)
+    SOUND : OKI MSM5205 + Resonator 384kHz, SN76489AN (x3)
     RAM   : MB8128 (x1)
     OTHER : Volume Pot (x2, labelled VOICE and SOUND)
     PALs  : (x1, near EPR-7542.15D, labelled 315-5056)
@@ -195,9 +195,9 @@ public:
 	{ }
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 protected:
 	// memory pointers
@@ -238,8 +238,8 @@ protected:
 	void adpcm_int(int state);
 
 	void common(machine_config &config);
-	void main_map(address_map &map);
-	void main_portmap(address_map &map);
+	void main_map(address_map &map) ATTR_COLD;
+	void main_portmap(address_map &map) ATTR_COLD;
 };
 
 class appoooh_state : public base_state
@@ -278,7 +278,7 @@ private:
 
 	void palette(palette_device &palette) const;
 
-	void decrypted_opcodes_map(address_map &map);
+	void decrypted_opcodes_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -558,9 +558,9 @@ void robowres_state::decrypted_opcodes_map(address_map &map)
 void base_state::main_portmap(address_map &map)
 {
 	map.global_mask(0xff);
-	map(0x00, 0x00).portr("P1").w("sn1", FUNC(sn76489_device::write));
-	map(0x01, 0x01).portr("P2").w("sn2", FUNC(sn76489_device::write));
-	map(0x02, 0x02).w("sn3", FUNC(sn76489_device::write));
+	map(0x00, 0x00).portr("P1").w("sn1", FUNC(sn76489a_device::write));
+	map(0x01, 0x01).portr("P2").w("sn2", FUNC(sn76489a_device::write));
+	map(0x02, 0x02).w("sn3", FUNC(sn76489a_device::write));
 	map(0x03, 0x03).portr("DSW1").w(FUNC(base_state::adpcm_w));
 	map(0x04, 0x04).portr("BUTTON3").w(FUNC(base_state::out_w));
 	map(0x05, 0x05).w(FUNC(base_state::scroll_w)); // unknown
@@ -716,9 +716,9 @@ void base_state::common(machine_config &config)
 	// sound hardware
 	SPEAKER(config, "mono").front_center();
 
-	SN76489(config, "sn1", 18.432_MHz_XTAL / 6).add_route(ALL_OUTPUTS, "mono", 0.30); // divider unknown
-	SN76489(config, "sn2", 18.432_MHz_XTAL / 6).add_route(ALL_OUTPUTS, "mono", 0.30); // divider unknown
-	SN76489(config, "sn3", 18.432_MHz_XTAL / 6).add_route(ALL_OUTPUTS, "mono", 0.30); // divider unknown
+	SN76489A(config, "sn1", 18.432_MHz_XTAL / 6).add_route(ALL_OUTPUTS, "mono", 0.30); // divider unknown
+	SN76489A(config, "sn2", 18.432_MHz_XTAL / 6).add_route(ALL_OUTPUTS, "mono", 0.30); // divider unknown
+	SN76489A(config, "sn3", 18.432_MHz_XTAL / 6).add_route(ALL_OUTPUTS, "mono", 0.30); // divider unknown
 
 	MSM5205(config, m_msm, 384000);
 	m_msm->vck_callback().set(FUNC(base_state::adpcm_int));

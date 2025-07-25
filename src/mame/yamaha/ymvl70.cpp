@@ -86,8 +86,8 @@ private:
 	void pc_w(u8 data);
 	u8 pc_r();
 
-	virtual void machine_start() override;
-	void vl70_map(address_map &map);
+	virtual void machine_start() override ATTR_COLD;
+	void vl70_map(address_map &map) ATTR_COLD;
 };
 
 void vl70_state::machine_start()
@@ -199,8 +199,7 @@ void vl70_state::vl70(machine_config &config)
 
 	MULCD(config, m_lcd);
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	DSPV(config, m_dspv);
 	MEG(config, m_meg);

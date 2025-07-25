@@ -85,16 +85,16 @@ public:
 	void m1comm(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	u32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
-	void mem_map(address_map &map);
-	void mem_comm_map(address_map &map);
-	void z80_map(address_map &map);
-	void z80_io_map(address_map &map);
-	void comm_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
+	void mem_comm_map(address_map &map) ATTR_COLD;
+	void z80_map(address_map &map) ATTR_COLD;
+	void z80_io_map(address_map &map) ATTR_COLD;
+	void comm_map(address_map &map) ATTR_COLD;
 
 	required_device<m68000_device> m_maincpu;
 	required_device<z80_device> m_soundcpu;
@@ -615,12 +615,11 @@ void systemm1_state::m1base(machine_config &config)
 
 	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	YM3438(config, m_ym, XTAL(8'000'000));
-	m_ym->add_route(0, "lspeaker", 0.40);
-	m_ym->add_route(1, "rspeaker", 0.40);
+	m_ym->add_route(0, "speaker", 0.40, 0);
+	m_ym->add_route(1, "speaker", 0.40, 1);
 
 	SEGA_315_5296(config, m_io1, XTAL(16'000'000));
 	m_io1->in_pa_callback().set_ioport("IN1_PA");

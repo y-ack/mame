@@ -28,9 +28,10 @@ DEFINE_DEVICE_TYPE(GT913, gt913_device, "gt913", "Casio GT913F")
 
 gt913_device::gt913_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock) :
 	h8_device(mconfig, GT913, tag, owner, clock, address_map_constructor(FUNC(gt913_device::map), this)),
-	device_mixer_interface(mconfig, *this, 2),
+	device_mixer_interface(mconfig, *this),
 	m_rom(*this, DEVICE_SELF),
 	m_data_config("data", ENDIANNESS_BIG, 16, 22, 0),
+	m_write_ple(*this),
 	m_intc(*this, "intc"),
 	m_sound(*this, "gt_sound"),
 	m_kbd(*this, "kbd"),
@@ -54,7 +55,7 @@ void gt913_device::map(address_map &map)
 	/* ctk530 writes here to latch LED matrix data, which generates an active high strobe on pin 99 (PLE/P16)
 	   there's otherwise no external address decoding (or the usual read/write strobes) used for the LED latches.
 	   just treat as a 16-bit write-only port for now */
-	map(0xe000, 0xe001).lw16(NAME([this](u16 data) { do_write_port(h8_device::PORT_4, data, ~0); }));
+	map(0xe000, 0xe001).lw16(NAME([this](u16 data) { m_write_ple(data); }));
 
 	map(0xfac0, 0xffbf).ram();
 
@@ -101,8 +102,8 @@ void gt913_device::device_add_mconfig(machine_config &config)
 
 	GT913_SOUND(config, m_sound, DERIVED_CLOCK(1, 1));
 	m_sound->set_device_rom_tag(m_rom);
-	m_sound->add_route(0, *this, 1.0, AUTO_ALLOC_INPUT, 0);
-	m_sound->add_route(1, *this, 1.0, AUTO_ALLOC_INPUT, 1);
+	m_sound->add_route(0, *this, 1.0, 0);
+	m_sound->add_route(1, *this, 1.0, 1);
 
 	GT913_KBD_HLE(config, m_kbd, 0);
 	m_kbd->irq_cb().set([this] (int val) {

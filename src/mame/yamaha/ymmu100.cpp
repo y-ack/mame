@@ -172,6 +172,7 @@ public:
 	{ }
 
 	void mu100(machine_config &config);
+	void mu100b(machine_config &config);
 
 protected:
 	virtual u16 adc_type_r();
@@ -184,7 +185,7 @@ protected:
 
 	required_device<h8s2655_device> m_maincpu;
 	required_device<swp30_device> m_swp30;
-	required_device<mulcd_device> m_lcd;
+	optional_device<mulcd_device> m_lcd;
 	required_device<plg1x0_connector> m_ext1;
 	optional_device<plg1x0_connector> m_ext2;
 	required_ioport m_ioport_p7;
@@ -218,11 +219,11 @@ protected:
 	void e1_tx(int state);
 	void e2_tx(int state);
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
-	void mu100_map(address_map &map);
-	void swp30_map(address_map &map);
+	void mu100_map(address_map &map) ATTR_COLD;
+	void swp30_map(address_map &map) ATTR_COLD;
 };
 
 class mu100r_state : public mu100_state {
@@ -297,7 +298,7 @@ u16 mu100_state::adc_battery_r()
 // model detect.  pulled to GND (0) on MU100, to 0.5Vcc on the card version, to Vcc on MU100R
 u16 mu100_state::adc_type_r()
 {
-	return 0;
+	return m_lcd ? 0 : 0x200;
 }
 
 u16 mu100r_state::adc_type_r()
@@ -312,15 +313,16 @@ void mu100_state::p1_w(u8 data)
 
 u8 mu100_state::p1_r()
 {
-	if((m_cur_p2 & P2_LCD_ENABLE)) {
-		if(m_cur_p2 & P2_LCD_RW) {
-			if(m_cur_p2 & P2_LCD_RS)
-				return m_lcd->data_read();
-			else
-				return m_lcd->control_read();
-		} else
-			return 0x00;
-	}
+	if(m_lcd)
+		if((m_cur_p2 & P2_LCD_ENABLE)) {
+			if(m_cur_p2 & P2_LCD_RW) {
+				if(m_cur_p2 & P2_LCD_RS)
+					return m_lcd->data_read();
+				else
+					return m_lcd->control_read();
+			} else
+				return 0x00;
+		}
 
 	if(!(m_cur_pf & 0x02)) {
 		u8 val = 0xff;
@@ -336,16 +338,18 @@ u8 mu100_state::p1_r()
 
 void mu100_state::p2_w(u8 data)
 {
+	if(m_lcd) {
 	// LCD enable edge
-	if((m_cur_p2 & P2_LCD_ENABLE) && !(data & P2_LCD_ENABLE)) {
-		if(!(m_cur_p2 & P2_LCD_RW)) {
-			if(m_cur_p2 & P2_LCD_RS)
-				m_lcd->data_write(m_cur_p1);
-			else
-				m_lcd->control_write(m_cur_p1);
+		if((m_cur_p2 & P2_LCD_ENABLE) && !(data & P2_LCD_ENABLE)) {
+			if(!(m_cur_p2 & P2_LCD_RW)) {
+				if(m_cur_p2 & P2_LCD_RS)
+					m_lcd->data_write(m_cur_p1);
+				else
+					m_lcd->control_write(m_cur_p1);
+			}
 		}
+		m_lcd->set_contrast((data >> 3) & 7);
 	}
-	m_lcd->set_contrast((data >> 3) & 7);
 	m_cur_p2 = data;
 }
 
@@ -390,7 +394,8 @@ void mu100_state::pf_w(u8 data)
 {
 	if(!(m_cur_pf & 0x01) && (data & 0x01)) {
 		m_cur_ic32 = m_cur_p1;
-		m_lcd->set_leds((m_cur_p1 & 0x1f) | ((m_cur_p1 & 0x80) >> 2));
+		if(m_lcd)
+			m_lcd->set_leds((m_cur_p1 & 0x1f) | ((m_cur_p1 & 0x80) >> 2));
 	}
 	m_cur_pf = data;
 	m_cur_sw = (m_cur_sw & 0x7) | (BIT(m_cur_pf, 2) << 3);
@@ -446,7 +451,7 @@ void mu100_state::swp30_map(address_map &map)
 	map(0x800000, 0x9fffff).rom().region("swp30", 0x1000000).mirror(0x200000);
 }
 
-void mu100_state::mu100(machine_config &config)
+void mu100_state::mu100b(machine_config &config)
 {
 	H8S2655(config, m_maincpu, 16_MHz_XTAL);
 	m_maincpu->set_addrmap(AS_PROGRAM, &mu100_state::mu100_map);
@@ -471,18 +476,15 @@ void mu100_state::mu100(machine_config &config)
 	m_maincpu->write_portg().set(FUNC(mu100_state::pg_w));
 	m_maincpu->write_sci_tx<2>().set(FUNC(mu100_state::h8_tx));
 
-	MULCD(config, m_lcd);
-
 	PLG1X0_CONNECTOR(config, m_ext1, plg1x0_intf, nullptr);
 	m_ext1->midi_tx().set(FUNC(mu100_state::e1_tx));
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	SWP30(config, m_swp30);
 	m_swp30->set_addrmap(AS_DATA, &mu100_state::swp30_map);
-	m_swp30->add_route(0, "lspeaker", 1.0);
-	m_swp30->add_route(1, "rspeaker", 1.0);
+	m_swp30->add_route(0, "speaker", 1.0, 0);
+	m_swp30->add_route(1, "speaker", 1.0, 1);
 
 	auto &mdin_a(MIDI_PORT(config, "mdin_a"));
 	midiin_slot(mdin_a);
@@ -495,6 +497,13 @@ void mu100_state::mu100(machine_config &config)
 	auto &mdout(MIDI_PORT(config, "mdout"));
 	midiout_slot(mdout);
 	m_maincpu->write_sci_tx<0>().set(mdout, FUNC(midi_port_device::write_txd));
+}
+
+void mu100_state::mu100(machine_config &config)
+{
+	mu100b(config);
+
+	MULCD(config, m_lcd);
 }
 
 void mu100r_state::mu100r(machine_config &config)
@@ -535,7 +544,7 @@ ROM_END
 ROM_START( mu100b )
 	ROM_REGION( 0x200000, "maincpu", 0 )
 	// MU-100B v1.08 (Nov. 28, 1997)
-	ROM_LOAD16_WORD_SWAP( "xu50710-m27c160.bin", 0x000000, 0x200000, CRC(4b10bd27) SHA1(12d7c6e1bce7974b34916e1bfa5057ab55867476) )
+	ROM_LOAD16_WORD_SWAP( "xu50710.bin", 0x000000, 0x200000, CRC(4b10bd27) SHA1(12d7c6e1bce7974b34916e1bfa5057ab55867476) )
 
 	ROM_REGION32_LE( 0x1800000, "swp30", ROMREGION_ERASE00 )
 	ROM_LOAD32_WORD( "sx518b0.ic34", 0x0000000, 0x400000, CRC(2550d44f) SHA1(fd3cce228c7d389a2fde25c808a5b26080588cba) )
@@ -551,4 +560,4 @@ ROM_END
 
 SYST( 1997, mu100,  0,     0, mu100,  mu100, mu100_state,  empty_init, "Yamaha", "MU100",                    MACHINE_NOT_WORKING )
 SYST( 1997, mu100r, mu100, 0, mu100r, mu100, mu100r_state, empty_init, "Yamaha", "MU100 Rackable version",   MACHINE_NOT_WORKING )
-SYST( 1998, mu100b, mu100, 0, mu100,  mu100, mu100_state,  empty_init, "Yamaha", "MU100 Screenless version", MACHINE_NOT_WORKING )
+SYST( 1998, mu100b, mu100, 0, mu100b, mu100, mu100_state,  empty_init, "Yamaha", "MU100 Screenless version", MACHINE_NOT_WORKING )

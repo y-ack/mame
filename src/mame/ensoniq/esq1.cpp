@@ -207,10 +207,10 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 	// device_sound_interface overrides
-	virtual void sound_stream_update(sound_stream &stream, std::vector<read_stream_view> const &inputs, std::vector<write_stream_view> &outputs) override;
+	virtual void sound_stream_update(sound_stream &stream) override;
 
 private:
 	struct filter {
@@ -341,7 +341,7 @@ void esq1_filters::device_start()
 		recalc_filter(elem);
 }
 
-void esq1_filters::sound_stream_update(sound_stream &stream, std::vector<read_stream_view> const &inputs, std::vector<write_stream_view> &outputs)
+void esq1_filters::sound_stream_update(sound_stream &stream)
 {
 /*  if(0) {
         for(int i=0; i<8; i++)
@@ -353,11 +353,11 @@ void esq1_filters::sound_stream_update(sound_stream &stream, std::vector<read_st
         fprintf(stderr, "\n");
     }*/
 
-	for(int i=0; i<outputs[0].samples(); i++) {
+	for(int i=0; i<stream.samples(); i++) {
 		double l=0, r=0;
 		for(int j=0; j<8; j++) {
 			filter &f = filters[j];
-			double x = inputs[j].get(i);
+			double x = stream.get(j, i);
 			double y = (x*f.a[0]
 						+ f.x[0]*f.a[1] + f.x[1]*f.a[2] + f.x[2]*f.a[3] + f.x[3]*f.a[4]
 						- f.y[0]*f.b[1] - f.y[1]*f.b[2] - f.y[2]*f.b[3] - f.y[3]*f.b[4]) / f.b[0];
@@ -379,8 +379,8 @@ void esq1_filters::sound_stream_update(sound_stream &stream, std::vector<read_st
 //      r *= 6553;
 		l *= 2;
 		r *= 2;
-		outputs[0].put_clamp(i, l, 1.0);
-		outputs[1].put_clamp(i, r, 1.0);
+		stream.put_clamp(0, i, l, 1.0);
+		stream.put_clamp(1, i, r, 1.0);
 	}
 }
 
@@ -435,12 +435,12 @@ private:
 	int m_seq_bank = 0;
 	uint8_t m_seqram[0x10000]{};
 	uint8_t m_dosram[0x2000]{};
-	virtual void machine_reset() override;
+	virtual void machine_reset() override ATTR_COLD;
 
 	void send_through_panel(uint8_t data);
-	void esq1_map(address_map &map);
-	void sq80_map(address_map &map);
-	void sq80_es5503_map(address_map &map);
+	void esq1_map(address_map &map) ATTR_COLD;
+	void sq80_map(address_map &map) ATTR_COLD;
+	void sq80_es5503_map(address_map &map) ATTR_COLD;
 
 	bool kpc_calibrated = false;  // sq80 requires keyboard calibration acknowledgement
 	int m_adc_target = 0;     // adc poll target (index into the table below)
@@ -631,12 +631,11 @@ void esq1_state::esq1(machine_config &config)
 
 	midiout_slot(MIDI_PORT(config, "mdout"));
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	ESQ1_FILTERS(config, m_filters);
-	m_filters->add_route(0, "lspeaker", 1.0);
-	m_filters->add_route(1, "rspeaker", 1.0);
+	m_filters->add_route(0, "speaker", 1.0, 0);
+	m_filters->add_route(1, "speaker", 1.0, 1);
 
 	ES5503(config, m_es5503, 8_MHz_XTAL);
 	m_es5503->set_channels(8);
@@ -667,30 +666,30 @@ void esq1_state::sq80(machine_config &config)
 
 static INPUT_PORTS_START( esq1 )
 	PORT_START("KEY0")
-	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q) PORT_CHAR('q') PORT_CHAR('Q') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x84) PORT_NAME("SEQ")
-	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_W) PORT_CHAR('w') PORT_CHAR('W') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x85) PORT_NAME("CART A")
-	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_E) PORT_CHAR('e') PORT_CHAR('E') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x86) PORT_NAME("CART B")
-	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_R) PORT_CHAR('r') PORT_CHAR('R') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x87) PORT_NAME("INT")
-	PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_A) PORT_CHAR('a') PORT_CHAR('A') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x88) PORT_NAME("1 / SEQ 1")
-	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_S) PORT_CHAR('s') PORT_CHAR('S') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x89) PORT_NAME("2 / SEQ 2")
-	PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_D) PORT_CHAR('d') PORT_CHAR('D') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8a) PORT_NAME("3 / SEQ 3")
-	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F) PORT_CHAR('f') PORT_CHAR('F') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8b) PORT_NAME("4 / SONG")
-	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_G) PORT_CHAR('g') PORT_CHAR('Z') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8c) PORT_NAME("COMPARE")
-	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS) PORT_CHAR('-') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8e) PORT_NAME("DATA DOWN")
-	PORT_BIT(0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('=') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8d) PORT_NAME("DATA UP")
-	PORT_BIT(0x0800, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_ENTER) PORT_CHAR('\r') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8f) PORT_NAME("WRITE")
+	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q) PORT_CHAR('q') PORT_CHAR('Q') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x84) PORT_NAME("SEQ")
+	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_W) PORT_CHAR('w') PORT_CHAR('W') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x85) PORT_NAME("CART A")
+	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_E) PORT_CHAR('e') PORT_CHAR('E') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x86) PORT_NAME("CART B")
+	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_R) PORT_CHAR('r') PORT_CHAR('R') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x87) PORT_NAME("INT")
+	PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_A) PORT_CHAR('a') PORT_CHAR('A') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x88) PORT_NAME("1 / SEQ 1")
+	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_S) PORT_CHAR('s') PORT_CHAR('S') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x89) PORT_NAME("2 / SEQ 2")
+	PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_D) PORT_CHAR('d') PORT_CHAR('D') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x8a) PORT_NAME("3 / SEQ 3")
+	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F) PORT_CHAR('f') PORT_CHAR('F') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x8b) PORT_NAME("4 / SONG")
+	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_G) PORT_CHAR('g') PORT_CHAR('Z') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x8c) PORT_NAME("COMPARE")
+	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS) PORT_CHAR('-') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x8e) PORT_NAME("DATA DOWN")
+	PORT_BIT(0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('=') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x8d) PORT_NAME("DATA UP")
+	PORT_BIT(0x0800, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_ENTER) PORT_CHAR('\r') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x8f) PORT_NAME("WRITE")
 
 	PORT_START("KEY1")
-	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x90) PORT_NAME("UPPER 1")
-	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x91) PORT_NAME("UPPER 2")
-	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x92) PORT_NAME("UPPER 3")
-	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x93) PORT_NAME("UPPER 4")
-	PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x99) PORT_NAME("UPPER 5")
-	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x94) PORT_NAME("LOWER 1")
-	PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x95) PORT_NAME("LOWER 2")
-	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x96) PORT_NAME("LOWER 3")
-	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x97) PORT_NAME("LOWER 4")
-	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0) PORT_CHAR('0') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x98) PORT_NAME("LOWER 5")
+	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x90) PORT_NAME("UPPER 1")
+	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x91) PORT_NAME("UPPER 2")
+	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x92) PORT_NAME("UPPER 3")
+	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x93) PORT_NAME("UPPER 4")
+	PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x99) PORT_NAME("UPPER 5")
+	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x94) PORT_NAME("LOWER 1")
+	PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x95) PORT_NAME("LOWER 2")
+	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x96) PORT_NAME("LOWER 3")
+	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x97) PORT_NAME("LOWER 4")
+	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0) PORT_CHAR('0') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(esq1_state::key_stroke), 0x98) PORT_NAME("LOWER 5")
 
 
 INPUT_PORTS_END

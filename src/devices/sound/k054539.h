@@ -60,13 +60,13 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 	virtual void device_clock_changed() override;
-	virtual void device_reset() override;
+	virtual void device_reset() override ATTR_COLD;
 	virtual void device_post_load() override;
 
 	// device_sound_interface overrides
-	virtual void sound_stream_update(sound_stream &stream, std::vector<read_stream_view> const &inputs, std::vector<write_stream_view> &outputs) override;
+	virtual void sound_stream_update(sound_stream &stream) override;
 
 	// device_rom_interface overrides
 	virtual void rom_bank_pre_change() override;
@@ -93,7 +93,6 @@ private:
 	int reverb_pos;
 
 	int32_t cur_ptr;
-	int cur_limit;
 	uint32_t rom_addr;
 
 	channel channels[8];

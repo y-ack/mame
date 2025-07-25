@@ -39,7 +39,7 @@ mos6551_device::mos6551_device(const machine_config &mconfig, const char *tag, d
 	m_dcd(1),
 	m_rxd(1), m_wordlength(0), m_extrastop(0), m_brk(0), m_echo_mode(0), m_parity(0),
 	m_rx_state(STATE_START),
-	m_rx_clock(0), m_rx_bits(0), m_rx_shift(0), m_rx_parity(0),
+	m_rx_clock(0), m_rx_bits(0), m_rx_shift(0), m_rx_shifted_bits(0), m_rx_parity(0),
 	m_rx_counter(0), m_rx_irq_enable(0),
 	m_rx_internal_clock(0),
 	m_tx_state(STATE_START),
@@ -67,6 +67,14 @@ void mos6551_device::device_add_mconfig(machine_config &config)
 {
 	CLOCK(config, m_internal_clock, 0);
 	m_internal_clock->signal_handler().set(FUNC(mos6551_device::internal_clock));
+}
+
+void mos6551_device::map(address_map &map)
+{
+	map(0, 0).rw(FUNC(mos6551_device::read_rdr), FUNC(mos6551_device::write_tdr));
+	map(1, 1).rw(FUNC(mos6551_device::read_status), FUNC(mos6551_device::write_reset));
+	map(2, 2).rw(FUNC(mos6551_device::read_command), FUNC(mos6551_device::write_command));
+	map(3, 3).rw(FUNC(mos6551_device::read_control), FUNC(mos6551_device::write_control));
 }
 
 
@@ -104,6 +112,7 @@ void mos6551_device::device_start()
 	save_item(NAME(m_rx_clock));
 	save_item(NAME(m_rx_bits));
 	save_item(NAME(m_rx_shift));
+	save_item(NAME(m_rx_shifted_bits));
 	save_item(NAME(m_rx_parity));
 	save_item(NAME(m_rx_counter));
 	save_item(NAME(m_rx_irq_enable));
@@ -344,12 +353,22 @@ void mos6551_device::write_command(uint8_t data)
 
 	// bit 1
 	m_rx_irq_enable = !((m_command >> 1) & 1) && !m_dtr;
+	if (!m_rx_irq_enable && (m_irq_state & IRQ_RDRF))
+	{
+		m_irq_state &= ~IRQ_RDRF;
+		update_irq();
+	}
 
 	// bits 2-3
 	int transmitter_control = (m_command >> 2) & 3;
 	m_tx_irq_enable = transmitter_controls[transmitter_control][0] && !m_dtr;
 	m_tx_enable = transmitter_controls[transmitter_control][1];
 	m_brk = transmitter_controls[transmitter_control][2];
+	if (!m_tx_irq_enable && (m_irq_state & IRQ_TDRE))
+	{
+		m_irq_state &= ~IRQ_TDRE;
+		update_irq();
+	}
 
 	// bit 4
 	m_echo_mode = (m_command >> 4) & 1;
@@ -477,7 +496,7 @@ void mos6551_device::write_cts(int state)
 	{
 		m_cts = state;
 
-		if (m_cts)
+		if (m_cts && started())
 		{
 			if (m_tx_output == OUTPUT_TXD)
 			{
@@ -562,6 +581,7 @@ void mos6551_device::receiver_clock(int state)
 						m_rx_shift = 0;
 						m_rx_parity = 0;
 						m_rx_bits = 0;
+						m_rx_shifted_bits = 0;
 					}
 					else
 					{
@@ -604,38 +624,49 @@ void mos6551_device::receiver_clock(int state)
 				break;
 
 			case STATE_STOP:
-				if (m_rx_counter >= stoplength())
+				if (m_rx_counter * 2 > (stoplength() * 2) - m_wordlength)
 				{
+					/* Copy Receive Shift Register into data register, bit-by-bit
+					 * Do two bits each iteration as shifting happens on both
+					 * clock phases.
+					 */
+					for (int i = 0; i < 2 && m_rx_shifted_bits < m_wordlength; i++)
+					{
+						if (m_rx_shift & (1 << m_rx_shifted_bits))
+							m_rdr |= (1 << m_rx_shifted_bits);
+						else
+							m_rdr &= ~(1 << m_rx_shifted_bits);
+						m_rx_shifted_bits++;
+					}
+
+					if (m_rx_counter < stoplength())
+						break;
+
+					/* Very last cycle of this byte: update status register,
+					 * trigger IRQ, etc.
+					 */
 					m_rx_counter = 0;
 
 					LOG("MOS6551: RX STOP BIT\n");
 
-					if (!(m_status & SR_RDRF))
-					{
-						if (!m_rxd)
-						{
-							m_status |= SR_FRAMING_ERROR;
-						}
-
-						if ((m_parity == PARITY_ODD && !m_rx_parity) ||
-							(m_parity == PARITY_EVEN && m_rx_parity))
-						{
-							m_status |= SR_PARITY_ERROR;
-						}
-
-						m_rdr = m_rx_shift;
-
-						if (m_wordlength == 7 && m_parity != PARITY_NONE)
-						{
-							m_rdr &= 0x7f;
-						}
-
-						m_status |= SR_RDRF;
-					}
-					else
-					{
+					if ((m_status & SR_RDRF))
 						m_status |= SR_OVERRUN;
+
+					if (!m_rxd)
+						m_status |= SR_FRAMING_ERROR;
+
+					if ((m_parity == PARITY_ODD && !m_rx_parity) ||
+						(m_parity == PARITY_EVEN && m_rx_parity))
+					{
+						m_status |= SR_PARITY_ERROR;
 					}
+
+					if (m_wordlength == 7 && m_parity != PARITY_NONE)
+					{
+						m_rdr &= 0x7f;
+					}
+
+					m_status |= SR_RDRF;
 
 					if (m_rx_irq_enable)
 					{

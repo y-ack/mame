@@ -20,9 +20,12 @@ DEFINE_DEVICE_TYPE(SPECNEXT_DMA, specnext_dma_device, "specnext_dma", "Spectrum 
 
 
 // TODO: this stuff is copy/pasted from machine/z80dma.cpp - ideally it wouldn't need to be
+#define GET_REGNUM(_r)          (&(_r) - &(WR0))
 #define WR0                     REG(0, 0)
 #define WR1                     REG(1, 0)
 #define WR2                     REG(2, 0)
+
+#define ZXN_PRESCALER           REG(2,2)
 
 #define PORTA_INC               (WR1 & 0x10)
 #define PORTB_INC               (WR2 & 0x10)
@@ -37,17 +40,11 @@ specnext_dma_device::specnext_dma_device(const machine_config &mconfig, const ch
 {
 }
 
-int specnext_dma_device::is_ready()
-{
-	return is_dma_enabled() || z80dma_device::is_ready();
-}
-
 void specnext_dma_device::write(u8 data)
 {
-	z80dma_device::write(data);
-
 	if (num_follow() == 0)
 	{
+		z80dma_device::write(data);
 		if ((data & 0x83) == 0x83) // WR6
 		{
 			switch (data)
@@ -58,6 +55,16 @@ void specnext_dma_device::write(u8 data)
 			default:
 				break;
 			}
+		}
+	}
+	else
+	{
+		int nreg = m_regs_follow[m_cur_follow];
+		z80dma_device::write(data);
+		if(nreg == REGNUM(2, 1))
+		{
+			if (data & 0x20)
+				m_regs_follow[m_num_follow++] = GET_REGNUM(ZXN_PRESCALER);
 		}
 	}
 }
@@ -74,8 +81,7 @@ void specnext_dma_device::do_write()
 	if (m_byte_counter)
 		m_addressB += PORTB_FIXED ? 0 : PORTB_INC ? 1 : -1;
 
-	u8 const mode = TRANSFER_MODE;
-	switch (mode)
+	switch (TRANSFER_MODE)
 	{
 	case TM_TRANSFER:
 		do_transfer_write();
@@ -91,7 +97,7 @@ void specnext_dma_device::do_write()
 		break;
 
 	default:
-		logerror("z80dma_do_operation: invalid mode %d!\n", mode);
+		logerror("z80dma_do_operation: invalid mode %d!\n", TRANSFER_MODE);
 		break;
 	}
 

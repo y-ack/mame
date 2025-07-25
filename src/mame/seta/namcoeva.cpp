@@ -33,7 +33,7 @@ TODO:
 - currently starts with 9 credits inserted. After entering and exiting test mode, the game shows 0
   coins and can be coined up normally;
 - implement proper controls. The game has a peculiar input setup (see video link above);
-- sound system is the same as namco/namcond1.cpp (puts "Quattro Ver.1.2.H8" in H8 RAM). Ir interacts
+- sound system is the same as namco/namcond1.cpp (puts "Quattro Ver.1.2.H8" in H8 RAM). It interacts
   with the keycus. Handling is copied over from said driver, but could probably be improved;
 - after coining up there's a GFX bug that maybe points to some unimplemented feature in seta2_v.cpp;
 - once the video emulation in seta/seta2_v.cpp has been devicified, remove derivation from
@@ -82,8 +82,8 @@ public:
 	void hammerch(machine_config &config) ATTR_COLD;
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	required_device<h83002_device> m_subcpu;
@@ -409,14 +409,13 @@ void namcoeva_state::hammerch(machine_config &config)
 	PALETTE(config, m_palette).set_format(palette_device::xRGB_555, 0x8000+0xf0);    // extra 0xf0 because we might draw 256-color object with 16-color granularity
 
 	// sound hardware
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	c352_device &c352(C352(config, "c352", 50_MHz_XTAL / 2, 288)); // TODO: clock and divider not verified
-	c352.add_route(0, "lspeaker", 1.00);
-	c352.add_route(1, "rspeaker", 1.00);
-	c352.add_route(2, "lspeaker", 1.00);
-	c352.add_route(3, "rspeaker", 1.00);
+	c352.add_route(0, "speaker", 1.00, 0);
+	c352.add_route(1, "speaker", 1.00, 1);
+	c352.add_route(2, "speaker", 1.00, 0);
+	c352.add_route(3, "speaker", 1.00, 1);
 }
 
 
@@ -436,8 +435,8 @@ ROM_START( hammerch )
 	ROM_LOAD64_WORD( "hc1_cg2.u31", 0x000004, 0x400000, CRC(3aea6bf0) SHA1(a8e7a7fae0ab83b08b80ff28461c9e97afe85cf7) )
 	ROM_LOAD64_WORD( "hc1_cg0.u30", 0x000006, 0x400000, CRC(f1685224) SHA1(94f491d92e91cc0040b67a82849f2832629459b0) )
 
-	ROM_REGION( 0x1000000, "c352", ROMREGION_ERASE00 )
-	ROM_LOAD( "hc1_wave0.u51", 0x000000, 0x400000, BAD_DUMP CRC(8d532360) SHA1(d303767706b3437953e0cfacf28cd12c0e3b948e) ) // FIXED BITS (xxxxxxxx11111111)
+	ROM_REGION( 0x400000, "c352", 0 )
+	ROM_LOAD( "hc1_wave0.u51", 0x000000, 0x400000, CRC(a1546af4) SHA1(983a18e61696ed906d2ad1594f01527097742f98) )
 ROM_END
 
 } // anonymous namespace

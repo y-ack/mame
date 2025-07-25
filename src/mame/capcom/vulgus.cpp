@@ -99,7 +99,7 @@ private:
 
 	void fgvideoram_w(offs_t offset, uint8_t data);
 	void bgvideoram_w(offs_t offset, uint8_t data);
-	void c804_w(uint8_t data);
+	void control_w(uint8_t data);
 	void palette_bank_w(uint8_t data);
 
 	TILE_GET_INFO_MEMBER(get_fg_tile_info);
@@ -268,7 +268,7 @@ void vulgus_state::bgvideoram_w(offs_t offset, uint8_t data)
 }
 
 
-void vulgus_state::c804_w(uint8_t data)
+void vulgus_state::control_w(uint8_t data)
 {
 	// bits 0 and 1 are coin counters
 	machine().bookkeeping().coin_counter_w(0, data & 0x01);
@@ -356,7 +356,7 @@ void vulgus_state::main_map(address_map &map)
 	map(0xc800, 0xc800).w("soundlatch", FUNC(generic_latch_8_device::write));
 	map(0xc801, 0xc801).nopw(); // ?
 	map(0xc802, 0xc803).ram().share(m_scroll_low);
-	map(0xc804, 0xc804).w(FUNC(vulgus_state::c804_w));
+	map(0xc804, 0xc804).w(FUNC(vulgus_state::control_w));
 	map(0xc805, 0xc805).w(FUNC(vulgus_state::palette_bank_w));
 	map(0xc902, 0xc903).ram().share(m_scroll_high);
 	map(0xcc00, 0xcc7f).ram().share(m_spriteram);
@@ -716,7 +716,7 @@ ROM_START( 1942iti )
 	ROM_REGION( 0x20000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "2764.n4",             0x00000, 0x2000, CRC(0720ef77) SHA1(59466c22f8c37b80762c95049521fc5d31cf0932) )
 	ROM_LOAD( "2764.n5",             0x02000, 0x2000, CRC(9353a860) SHA1(4ed19fc1f4f87e95bcad988b2f9851ed7604e586) )
-		ROM_LOAD( "2764.n6",             0x04000, 0x2000, CRC(2b2faee6) SHA1(bcd2e5675b863df8be8bc813e25f4aa65a969359) )
+	ROM_LOAD( "2764.n6",             0x04000, 0x2000, CRC(2b2faee6) SHA1(bcd2e5675b863df8be8bc813e25f4aa65a969359) )
 	ROM_LOAD( "2764.n7",             0x06000, 0x2000, CRC(bd3cbb4c) SHA1(9da177d68d39b56375975b8700cc0cc8b48211fe) )
 	ROM_LOAD( "daugther_27128.3",    0x10000, 0x4000, CRC(835f7b24) SHA1(24b66827f08c43fbf5b9517d638acdfc38e1b1e7) )
 	ROM_LOAD( "daugther_2764.2",     0x14000, 0x2000, CRC(9eca91e1) SHA1(48ccb608519debb681fa4f78985a074e05040edc) )

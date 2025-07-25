@@ -180,11 +180,11 @@ private:
 	int         m_layer_colorbase[4];
 	int         m_layerpri[3];
 	int         m_alpha_enabled = 0;
-	uint16_t      m_zmask = 0;
+	uint16_t    m_zmask = 0;
 
 	/* misc */
-	uint16_t      m_protram[16];
-	uint16_t      m_cur_control2 = 0;
+	uint16_t    m_protram[16];
+	uint16_t    m_cur_control2 = 0;
 
 	/* devices */
 	required_device<cpu_device> m_maincpu;
@@ -216,10 +216,10 @@ private:
 	void moo_objdma();
 	K056832_CB_MEMBER(tile_callback);
 	K053246_CB_MEMBER(sprite_callback);
-	void bucky_map(address_map &map);
-	void moo_map(address_map &map);
-	void moobl_map(address_map &map);
-	void sound_map(address_map &map);
+	void bucky_map(address_map &map) ATTR_COLD;
+	void moo_map(address_map &map) ATTR_COLD;
+	void moobl_map(address_map &map) ATTR_COLD;
+	void sound_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -291,7 +291,7 @@ uint32_t moo_state::screen_update_moo(screen_device &screen, bitmap_rgb32 &bitma
 			if (m_layer_colorbase[plane] != new_colorbase)
 			{
 				m_layer_colorbase[plane] = new_colorbase;
-				m_k056832->mark_plane_dirty( plane);
+				m_k056832->mark_plane_dirty(plane);
 			}
 		}
 	}
@@ -333,7 +333,7 @@ uint32_t moo_state::screen_update_moo(screen_device &screen, bitmap_rgb32 &bitma
 	// There is probably a control bit somewhere to turn off alpha blending.
 	m_alpha_enabled = m_k054338->register_r(K338_REG_CONTROL) & K338_CTL_MIXPRI; // DUMMY
 
-	alpha = (m_alpha_enabled) ? m_k054338->set_alpha_level(1) : 255;
+	alpha = (m_alpha_enabled) ? m_k054338->set_alpha_level(1) & 0xff : 255;
 
 	if (alpha > 0)
 		m_k056832->tilemap_draw(screen, bitmap, cliprect, layers[2], TILEMAP_DRAW_ALPHA(alpha), 4);
@@ -636,8 +636,8 @@ static INPUT_PORTS_START( moo )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE4 )
 
 	PORT_START("IN1")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_er5911_device, do_read)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_er5911_device, ready_read)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_er5911_device::do_read))
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_er5911_device::ready_read))
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_SERVICE_NO_TOGGLE(0x08, IP_ACTIVE_LOW)
 	PORT_DIPNAME( 0x10, 0x00, "Sound Output")       PORT_DIPLOCATION("SW1:1")
@@ -652,9 +652,9 @@ static INPUT_PORTS_START( moo )
 	PORT_DIPSETTING(    0x80, "4")
 
 	PORT_START( "EEPROMOUT" )
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_er5911_device, di_write)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_er5911_device, cs_write)
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", eeprom_serial_er5911_device, clk_write)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_er5911_device::di_write))
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_er5911_device::cs_write))
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("eeprom", FUNC(eeprom_serial_er5911_device::clk_write))
 
 	PORT_START("P1_P3")
 	KONAMI16_LSB( 1, IPT_UNKNOWN, IPT_START1 )
@@ -735,7 +735,7 @@ void moo_state::moo(machine_config &config)
 
 	PALETTE(config, m_palette).set_format(palette_device::xRGB_888, 2048);
 	m_palette->enable_shadows();
-	m_palette->enable_hilights();
+	m_palette->enable_highlights();
 
 	MCFG_VIDEO_START_OVERRIDE(moo_state,moo)
 
@@ -754,16 +754,15 @@ void moo_state::moo(machine_config &config)
 	K054338(config, m_k054338, 0);
 
 	/* sound hardware */
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
-	K054321(config, m_k054321, "lspeaker", "rspeaker");
+	K054321(config, m_k054321, "speaker");
 
-	YM2151(config, "ymsnd", XTAL(32'000'000)/8).add_route(0, "lspeaker", 0.50).add_route(1, "rspeaker", 0.50); // 4MHz verified
+	YM2151(config, "ymsnd", XTAL(32'000'000)/8).add_route(0, "speaker", 0.50, 0).add_route(1, "speaker", 0.50, 1); // 4MHz verified
 
 	K054539(config, m_k054539, XTAL(18'432'000));
-	m_k054539->add_route(0, "rspeaker", 0.75);
-	m_k054539->add_route(1, "lspeaker", 0.75);
+	m_k054539->add_route(0, "speaker", 0.75, 0);
+	m_k054539->add_route(1, "speaker", 0.75, 1);
 }
 
 void moo_state::moobl(machine_config &config)
@@ -786,7 +785,7 @@ void moo_state::moobl(machine_config &config)
 
 	PALETTE(config, m_palette).set_format(palette_device::xRGB_888, 2048);
 	m_palette->enable_shadows();
-	m_palette->enable_hilights();
+	m_palette->enable_highlights();
 
 	MCFG_VIDEO_START_OVERRIDE(moo_state,moo)
 
@@ -805,12 +804,11 @@ void moo_state::moobl(machine_config &config)
 	K054338(config, m_k054338, 0);
 
 	/* sound hardware */
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	OKIM6295(config, m_oki, 1056000, okim6295_device::PIN7_HIGH); // clock frequency & pin 7 not verified
-	m_oki->add_route(ALL_OUTPUTS, "lspeaker", 1.0);
-	m_oki->add_route(ALL_OUTPUTS, "rspeaker", 1.0);
+	m_oki->add_route(ALL_OUTPUTS, "speaker", 1.0, 0);
+	m_oki->add_route(ALL_OUTPUTS, "speaker", 1.0, 1);
 }
 
 void moo_state::bucky(machine_config &config)
@@ -1249,6 +1247,7 @@ GAME( 1992, moomesauac, moomesa, moo,     moo,   moo_state, empty_init, ROT0, "K
 GAME( 1992, moomesauab, moomesa, moo,     moo,   moo_state, empty_init, ROT0, "Konami",  "Wild West C.O.W.-Boys of Moo Mesa (ver UAB)", MACHINE_IMPERFECT_GRAPHICS | MACHINE_SUPPORTS_SAVE )
 GAME( 1992, moomesaaab, moomesa, moo,     moo,   moo_state, empty_init, ROT0, "Konami",  "Wild West C.O.W.-Boys of Moo Mesa (ver AAB)", MACHINE_IMPERFECT_GRAPHICS | MACHINE_SUPPORTS_SAVE )
 GAME( 1992, moomesabl,  moomesa, moobl,   moo,   moo_state, empty_init, ROT0, "bootleg", "Wild West C.O.W.-Boys of Moo Mesa (bootleg)", MACHINE_NOT_WORKING | MACHINE_IMPERFECT_GRAPHICS | MACHINE_SUPPORTS_SAVE ) // based on Version AA
+
 GAME( 1992, bucky,      0,       bucky,   bucky, moo_state, empty_init, ROT0, "Konami",  "Bucky O'Hare (ver EAB)",                      MACHINE_IMPERFECT_GRAPHICS | MACHINE_SUPPORTS_SAVE )
 GAME( 1992, buckyea,    bucky,   bucky,   bucky, moo_state, empty_init, ROT0, "Konami",  "Bucky O'Hare (ver EA)",                       MACHINE_IMPERFECT_GRAPHICS | MACHINE_SUPPORTS_SAVE )
 GAME( 1992, buckyjaa,   bucky,   bucky,   bucky, moo_state, empty_init, ROT0, "Konami",  "Bucky O'Hare (ver JAA)",                      MACHINE_IMPERFECT_GRAPHICS | MACHINE_SUPPORTS_SAVE )

@@ -35,10 +35,6 @@ void tc0630fdp_device::device_add_mconfig(machine_config &config) {
 
 void tc0630fdp_device::device_post_load()
 {
-	// force a reread of the dynamic tiles in the pixel layer
-	gfx(0)->mark_all_dirty();
-	gfx(1)->mark_all_dirty();
-
 	// refresh tile usage indexes
 	std::fill_n(*m_tilemap_row_usage, 32 * 8, 0);
 	std::fill_n(m_textram_row_usage, 64, 0);
@@ -153,8 +149,8 @@ static const gfx_layout bubsympb_sprite_layout = {
 };
 
 GFXDECODE_MEMBER( tc0630fdp_device::gfxinfo )
-	GFXDECODE_DEVICE_RAM( "charram",    0, layout_pivot,      0x0000, 0x0400>>4 ) /* Dynamically modified */
-	GFXDECODE_DEVICE_RAM( "pivotram",   0, layout_pivot,      0x0000, 0x0400>>4 ) /* Dynamically modified */
+	GFXDECODE_DEVICE_RAM( "charram",    0, layout_pivot,      0x0000, 0x0400>>4 ) // dynamically modified
+	GFXDECODE_DEVICE_RAM( "pivotram",   0, layout_pivot,      0x0000, 0x0400>>4 ) // dynamically modified
 	GFXDECODE_DEVICE( "sprites", 0, layout_sprite_low, 0x1000, 0x1000>>4 ) // low 4bpp of 6bpp sprite data
 	GFXDECODE_DEVICE( "tiles",   0, layout_tile_low,   0x0000, 0x2000>>4 ) // low 4bpp of 6bpp tilemap data
 	GFXDECODE_DEVICE( "tiles",   0, layout_tile_hi,    0x0000, 0x2000>>4 ) // hi 2bpp of 6bpp tilemap data
@@ -162,9 +158,9 @@ GFXDECODE_MEMBER( tc0630fdp_device::gfxinfo )
 GFXDECODE_END
 
 GFXDECODE_MEMBER( tc0630fdp_device::gfx_bubsympb )
-	GFXDECODE_DEVICE_RAM( "charram",     0, layout_pivot,           0x0000, 0x0400>>4) /* Dynamically modified */
-	GFXDECODE_DEVICE_RAM( "pivotram",    0, layout_pivot,           0x0000, 0x0400>>4) /* Dynamically modified */
-	GFXDECODE_DEVICE( "sprites",  0, bubsympb_sprite_layout, 0x1000, 0x1000>>4) /* Sprites area (6bpp planar) */
+	GFXDECODE_DEVICE_RAM( "charram",     0, layout_pivot,           0x0000, 0x0400>>4) // dynamically modified
+	GFXDECODE_DEVICE_RAM( "pivotram",    0, layout_pivot,           0x0000, 0x0400>>4) // dynamically modified
+	GFXDECODE_DEVICE( "sprites",  0, bubsympb_sprite_layout, 0x1000, 0x1000>>4) // sprites area (6bpp planar)
 	GFXDECODE_DEVICE( "tiles",    0, layout_tile_low,        0x0000, 0x2000>>4) // low 4bpp of 5bpp tilemap data
 	GFXDECODE_DEVICE( "tiles",    0, layout_tile_hi,         0x0000, 0x2000>>4) // hi 1bpp of 5bpp tilemap data
 //GFXDECODE_DEVICE( "sprites",  0, layout_sprite_hi,       0x1000, 0x1000>>4) // dummy gfx duplicate for avoid crash

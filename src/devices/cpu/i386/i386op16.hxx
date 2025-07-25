@@ -1225,9 +1225,9 @@ void i386_device::i386_lodsw()             // Opcode 0xad
 {
 	uint32_t eas;
 	if( m_segment_prefix ) {
-		eas = i386_translate(m_segment_override, m_address_size ? REG32(ESI) : REG16(SI), 0 );
+		eas = i386_translate(m_segment_override, m_address_size ? REG32(ESI) : REG16(SI), 0, 2);
 	} else {
-		eas = i386_translate(DS, m_address_size ? REG32(ESI) : REG16(SI), 0 );
+		eas = i386_translate(DS, m_address_size ? REG32(ESI) : REG16(SI), 0, 2);
 	}
 	REG16(AX) = READ16(eas);
 	BUMP_SI(2);
@@ -1424,11 +1424,11 @@ void i386_device::i386_movsw()             // Opcode 0xa5
 	uint32_t eas, ead;
 	uint16_t v;
 	if( m_segment_prefix ) {
-		eas = i386_translate(m_segment_override, m_address_size ? REG32(ESI) : REG16(SI), 0 );
+		eas = i386_translate(m_segment_override, m_address_size ? REG32(ESI) : REG16(SI), 0, 2);
 	} else {
-		eas = i386_translate(DS, m_address_size ? REG32(ESI) : REG16(SI), 0 );
+		eas = i386_translate(DS, m_address_size ? REG32(ESI) : REG16(SI), 0, 2);
 	}
-	ead = i386_translate(ES, m_address_size ? REG32(EDI) : REG16(DI), 1 );
+	ead = i386_translate(ES, m_address_size ? REG32(EDI) : REG16(DI), 1, 2);
 	v = READ16(eas);
 	WRITE16(ead, v);
 	BUMP_SI(2);
@@ -3260,14 +3260,18 @@ void i386_device::i386_group0F00_16()          // Opcode 0x0f 00
 						{  // check if conforming, these are always readable, regardless of privilege
 							if(!(seg.flags & 0x04))
 							{
-								// if not conforming, then we must check privilege levels (TODO: current privilege level check)
-								if(((seg.flags >> 5) & 0x03) < (address & 0x03))
+								// if not conforming, then we must check privilege levels
+								if(((seg.flags >> 5) & 0x03) < std::max(m_CPL, (uint8_t)(address & 0x03)))
 									result = 0;
 							}
 						}
 					}
+					else
+					{
+						if(((seg.flags >> 5) & 0x03) < std::max(m_CPL, (uint8_t)(address & 0x03)))
+							result = 0;
+					}
 				}
-				// check that the descriptor privilege is greater or equal to the selector's privilege level and the current privilege (TODO)
 				SetZF(result);
 			}
 			else
@@ -3308,8 +3312,7 @@ void i386_device::i386_group0F00_16()          // Opcode 0x0f 00
 							result = 0;
 					}
 				}
-				// check that the descriptor privilege is greater or equal to the selector's privilege level and the current privilege (TODO)
-				if(((seg.flags >> 5) & 0x03) < (address & 0x03))
+				if(((seg.flags >> 5) & 0x03) < std::max(m_CPL, (uint8_t)(address & 0x03)))
 					result = 0;
 				SetZF(result);
 			}
@@ -3751,6 +3754,7 @@ bool i386_device::i386_load_far_pointer16(int s)
 {
 	uint8_t modrm = FETCH();
 	uint16_t selector;
+	bool fault = false;
 
 	if( modrm >= 0xc0 ) {
 		//LOGMASKED(LOG_PM_EVENTS, "i386: load_far_pointer16 NYI\n"); // don't log, NT will use this a lot
@@ -3758,11 +3762,13 @@ bool i386_device::i386_load_far_pointer16(int s)
 		return false;
 	} else {
 		uint32_t ea = GetEA(modrm,0);
-		STORE_REG16(modrm, READ16(ea + 0));
+		uint16_t val = READ16(ea + 0);
 		selector = READ16(ea + 2);
-		i386_sreg_load(selector,s,nullptr);
+		i386_sreg_load(selector,s,&fault);
+		if(!fault)
+			STORE_REG16(modrm, val);
 	}
-	return true;
+	return !fault;
 }
 
 void i386_device::i386_lds16()             // Opcode 0xc5

@@ -36,8 +36,8 @@ public:
 	void sspeedr(machine_config &config);
 
 protected:
-	virtual void video_start() override;
-	virtual void machine_start() override;
+	virtual void video_start() override ATTR_COLD;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	void int_ack_w(uint8_t data);
@@ -61,11 +61,9 @@ private:
 	void palette(palette_device &palette) const;
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	void screen_vblank(int state);
-	void io_map(address_map &map);
-	void prg_map(address_map &map);
+	void io_map(address_map &map) ATTR_COLD;
+	void prg_map(address_map &map) ATTR_COLD;
 
-	uint8_t m_led_time[2]{};
-	uint8_t m_led_score[24]{};
 	uint8_t m_toggle = 0;
 	uint16_t m_driver_horz = 0;
 	uint8_t m_driver_vert = 0;
@@ -77,7 +75,7 @@ private:
 	uint8_t m_track_vert[2]{};
 	uint8_t m_track_ice = 0;
 
-	void draw_track(bitmap_ind16 &bitmap);
+	void draw_track(bitmap_ind16 &bitmap, const rectangle &cliprect);
 	void draw_drones(bitmap_ind16 &bitmap, const rectangle &cliprect);
 	void draw_driver(bitmap_ind16 &bitmap, const rectangle &cliprect);
 	required_device<cpu_device> m_maincpu;

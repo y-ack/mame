@@ -20,12 +20,14 @@
 #include "bus/midi/midiinport.h"
 #include "bus/midi/midioutport.h"
 #include "cpu/h8/h83003.h"
-#include "mulcd.h"
-#include "sound/swp00.h"
 #include "machine/nvram.h"
+#include "sound/adc.h"
+#include "sound/swp00.h"
 
-#include "debugger.h"
+#include "mulcd.h"
 #include "speaker.h"
+
+#include "mu50.lh"
 
 
 namespace {
@@ -69,6 +71,8 @@ public:
 		, m_ioport_o1(*this, "O1")
 		, m_ioport_o2(*this, "O2")
 		, m_ram(*this, "ram")
+		, m_ad(*this, "ad")
+		, m_adc(*this, "adc%u", 0U)
 	{ }
 
 	void mu50(machine_config &config);
@@ -88,8 +92,10 @@ private:
 	required_ioport m_ioport_o1;
 	required_ioport m_ioport_o2;
 	required_shared_ptr<u16> m_ram;
+	required_device<microphone_device> m_ad;
+	required_device_array<adc10_device, 2> m_adc;
 
-	u8 cur_p6, cur_pa, cur_pb, cur_pc;
+	u8 cur_p6, cur_p9, cur_pa, cur_pb, cur_pc;
 
 	u16 adc_ar_r();
 	u16 adc_al_r();
@@ -98,22 +104,24 @@ private:
 
 	void p6_w(u8 data);
 	u8 p6_r();
+	void p9_w(u8 data);
 	void pa_w(u8 data);
 	u8 pa_r();
 	void pb_w(u8 data);
 	u8 pb_r();
 	void pc_w(u8 data);
 	u8 pc_r();
+	void update_contrast();
 
-	void mu50_map(address_map &map);
+	void mu50_map(address_map &map) ATTR_COLD;
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 };
 
 void mu50_state::machine_start()
 {
-	cur_p6 = cur_pa = cur_pb = cur_pc = 0xff;
+	cur_p6 = cur_p9 = cur_pa = cur_pb = cur_pc = 0xff;
 }
 
 void mu50_state::machine_reset()
@@ -132,13 +140,19 @@ void mu50_state::mu50_map(address_map &map)
 // Analog input right (not sent to the swp, mixing is analog)
 u16 mu50_state::adc_ar_r()
 {
-	return 0x3ff;
+	s16 v = m_adc[0]->read();
+	if(v < 0)
+		v = -v;
+	return 0x3ff - v;
 }
 
 // Analog input left (not sent to the swp, mixing is analog)
 u16 mu50_state::adc_al_r()
 {
-	return 0x3ff;
+	s16 v = m_adc[1]->read();
+	if(v < 0)
+		v = -v;
+	return 0x3ff - v;
 }
 
 // Put the host switch to pure midi
@@ -177,14 +191,27 @@ u8 mu50_state::p6_r()
 	return cur_p6;
 }
 
+void mu50_state::p9_w(u8 data)
+{
+	cur_p9 = data;
+	update_contrast();
+}
+
 u8 mu50_state::pb_r()
 {
 	return cur_pb;
 }
 
+void mu50_state::update_contrast()
+{
+	m_lcd->set_contrast(((~cur_p9 >> 3) & 0x6) | (BIT(~cur_pb, 1)));
+}
+
 void mu50_state::pb_w(u8 data)
 {
 	cur_pb = data;
+	m_lcd->set_leds((~data >> 2) & 0x1f);
+	update_contrast();
 }
 
 void mu50_state::pa_w(u8 data)
@@ -238,6 +265,7 @@ void mu50_state::mu50(machine_config &config)
 	m_mu50cpu->read_adc<7>().set_constant(0);
 	m_mu50cpu->read_port6().set(FUNC(mu50_state::p6_r));
 	m_mu50cpu->write_port6().set(FUNC(mu50_state::p6_w));
+	m_mu50cpu->write_port9().set(FUNC(mu50_state::p9_w));
 	m_mu50cpu->read_porta().set(FUNC(mu50_state::pa_r));
 	m_mu50cpu->write_porta().set(FUNC(mu50_state::pa_w));
 	m_mu50cpu->read_portb().set(FUNC(mu50_state::pb_r));
@@ -252,12 +280,20 @@ void mu50_state::mu50(machine_config &config)
 
 	MULCD(config, m_lcd);
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	MICROPHONE(config, m_ad, 2).front();
+	m_ad->add_route(0, "speakers", 1.0, 0);
+	m_ad->add_route(1, "speakers", 1.0, 1);
+	m_ad->add_route(0, "adc0", 1.0);
+	m_ad->add_route(1, "adc1", 1.0);
+
+	ADC10(config, m_adc[0]);
+	ADC10(config, m_adc[1]);
+
+	SPEAKER(config, "speakers", 2).front();
 
 	SWP00(config, m_swp00);
-	m_swp00->add_route(0, "lspeaker", 1.0);
-	m_swp00->add_route(1, "rspeaker", 1.0);
+	m_swp00->add_route(0, "speakers", 1.0, 0);
+	m_swp00->add_route(1, "speakers", 1.0, 1);
 
 	auto &mdin(MIDI_PORT(config, "mdin"));
 	midiin_slot(mdin);
@@ -266,6 +302,8 @@ void mu50_state::mu50(machine_config &config)
 	auto &mdout(MIDI_PORT(config, "mdout"));
 	midiout_slot(mdout);
 	m_mu50cpu->write_sci_tx<1>().set(mdout, FUNC(midi_port_device::write_txd));
+
+	config.set_default_layout(layout_mu50);
 }
 
 #define ROM_LOAD16_WORD_SWAP_BIOS(bios,name,offset,length,hash) \

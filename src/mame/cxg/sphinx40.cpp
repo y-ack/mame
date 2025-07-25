@@ -79,7 +79,7 @@ public:
 	void sphinx40(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	// devices/pointers
@@ -98,7 +98,7 @@ private:
 	u8 m_inp_mux = 0;
 
 	// address maps
-	void main_map(address_map &map);
+	void main_map(address_map &map) ATTR_COLD;
 
 	// I/O handlers
 	void lcd_seg_w(u64 data);
@@ -110,7 +110,6 @@ private:
 
 	u8 input_r();
 	void input_w(u8 data);
-	void lcd_w(u8 data);
 
 	u8 nvram_r(offs_t offset) { return m_nvram[offset]; }
 	void nvram_w(offs_t offset, u8 data) { m_nvram[offset] = data; }
@@ -204,12 +203,6 @@ u8 sphinx40_state::input_r()
 	return ~data & 0x1f;
 }
 
-void sphinx40_state::lcd_w(u8 data)
-{
-	// d0-d3: HD61603 data
-	m_lcd->data_w(data & 0xf);
-}
-
 
 
 /*******************************************************************************
@@ -224,7 +217,7 @@ void sphinx40_state::main_map(address_map &map)
 	map(0x70fcf1, 0x70fcf1).r(FUNC(sphinx40_state::cb_r));
 	map(0x70fd71, 0x70fd71).r(FUNC(sphinx40_state::input_r));
 	map(0x70fdb1, 0x70fdb1).w(FUNC(sphinx40_state::input_w));
-	map(0x70fde0, 0x70fde0).w(FUNC(sphinx40_state::lcd_w));
+	map(0x70fde0, 0x70fde0).w(m_lcd, FUNC(hd61603_device::data_w));
 	map(0x70fff0, 0x70fff7).rw(m_pia, FUNC(pia6821_device::read), FUNC(pia6821_device::write)).umask16(0xff00);
 }
 
@@ -324,4 +317,4 @@ ROM_END
 *******************************************************************************/
 
 //    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     CLASS           INIT        COMPANY, FULLNAME, FLAGS
-SYST( 1987, sphinx40, 0,      0,      sphinx40, sphinx40, sphinx40_state, empty_init, "CXG Systems / Newcrest Technology / Intelligent Software", "Sphinx 40", MACHINE_SUPPORTS_SAVE )
+SYST( 1987, sphinx40, 0,      0,      sphinx40, sphinx40, sphinx40_state, empty_init, "CXG Systems / Newcrest Technology / Intelligent Chess Software", "Sphinx 40", MACHINE_SUPPORTS_SAVE )

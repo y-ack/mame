@@ -242,6 +242,7 @@ void i80186_cpu_device::execute_run()
 
 			if (m_halt)
 			{
+				debugger_wait_hook();
 				m_icount = 0;
 				return;
 			}
@@ -845,7 +846,7 @@ void i80186_cpu_device::write_port_word(uint16_t port, uint16_t data)
 
 uint8_t i80186_cpu_device::read_byte(uint32_t addr)
 {
-	if ((m_reloc & 0x1000) && (addr >> 8) == (m_reloc & 0xfff))
+	if ((m_reloc & 0x1000) && ((addr >> 8) & 0xfff) == (m_reloc & 0xfff))
 	{
 		uint16_t ret = internal_port_r((addr >> 1) & 0x7f, (addr & 1) ? 0xff00 : 0x00ff);
 		return (addr & 1) ? (ret >> 8) : (ret & 0xff);
@@ -855,7 +856,7 @@ uint8_t i80186_cpu_device::read_byte(uint32_t addr)
 
 uint16_t i80186_cpu_device::read_word(uint32_t addr)
 {
-	if ((m_reloc & 0x1000) && (addr >> 8) == (m_reloc & 0xfff))
+	if ((m_reloc & 0x1000) && ((addr >> 8) & 0xfff) == (m_reloc & 0xfff))
 	{
 		// Unaligned reads from the internal bus are swapped rather than split
 		if (addr & 1)
@@ -868,7 +869,7 @@ uint16_t i80186_cpu_device::read_word(uint32_t addr)
 
 void i80186_cpu_device::write_byte(uint32_t addr, uint8_t data)
 {
-	if ((m_reloc & 0x1000) && (addr >> 8) == (m_reloc & 0xfff))
+	if ((m_reloc & 0x1000) && ((addr >> 8) & 0xfff) == (m_reloc & 0xfff))
 		internal_port_w((addr >> 1) & 0x7f, (addr & 1) ? (data << 8) : data);
 	else
 		m_program->write_byte(addr, data);
@@ -876,7 +877,7 @@ void i80186_cpu_device::write_byte(uint32_t addr, uint8_t data)
 
 void i80186_cpu_device::write_word(uint32_t addr, uint16_t data)
 {
-	if ((m_reloc & 0x1000) && (addr >> 8) == (m_reloc & 0xfff))
+	if ((m_reloc & 0x1000) && ((addr >> 8) & 0xfff) == (m_reloc & 0xfff))
 	{
 		// Unaligned writes from the internal bus are swapped rather than split
 		if (addr & 1)
@@ -1243,7 +1244,7 @@ TIMER_CALLBACK_MEMBER(i80186_cpu_device::timer_elapsed)
 	int which = param;
 	timer_state *t = &m_timer[which];
 
-	LOGMASKED(LOG_TIMER, "Hit interrupt callback for timer %d", which);
+	LOGMASKED(LOG_TIMER, "Hit interrupt callback for timer %d\n", which);
 
 	/* set the max count bit */
 	t->control |= 0x0020;
@@ -1253,7 +1254,7 @@ TIMER_CALLBACK_MEMBER(i80186_cpu_device::timer_elapsed)
 	{
 		m_intr.status |= 0x01 << which;
 		update_interrupt_state();
-		LOGMASKED(LOG_TIMER, "  Generating timer interrupt");
+		LOGMASKED(LOG_TIMER, "  Generating timer interrupt\n");
 	}
 
 	if (which == 2)
@@ -1294,7 +1295,7 @@ TIMER_CALLBACK_MEMBER(i80186_cpu_device::timer_elapsed)
 			t->control &= ~0x1000;
 
 		restart_timer(which);
-		LOGMASKED(LOG_TIMER, "  Repriming interrupt");
+		LOGMASKED(LOG_TIMER, "  Repriming interrupt\n");
 	}
 	else
 	{
@@ -1345,7 +1346,7 @@ void i80186_cpu_device::internal_timer_update(int which, int new_count, int new_
 	timer_state *t = &m_timer[which];
 	bool update_int_timer = false;
 
-	LOGMASKED(LOG_TIMER, "internal_timer_update: %d, new_count=%d, new_maxA=%d, new_maxB=%d, new_control=%d", which, new_count, new_maxA, new_maxB, new_control);
+	LOGMASKED(LOG_TIMER, "internal_timer_update: %d, new_count=%d, new_maxA=%d, new_maxB=%d, new_control=%d\n", which, new_count, new_maxA, new_maxB, new_control);
 
 	/* if we have a new count and we're on, update things */
 	if (new_count != -1)

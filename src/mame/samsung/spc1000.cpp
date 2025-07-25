@@ -177,8 +177,8 @@ private:
 		return m_p_videoram[0x1000 + (ch & 0x7f) * 16 + line];
 	}
 
-	void io_map(address_map &map);
-	void mem_map(address_map &map);
+	void io_map(address_map &map) ATTR_COLD;
+	void mem_map(address_map &map) ATTR_COLD;
 
 	uint8_t m_IPLK = 0U;
 	uint8_t m_GMODE = 0U;
@@ -186,8 +186,8 @@ private:
 	std::unique_ptr<uint8_t[]> m_work_ram;
 	attotime m_time;
 	bool m_centronics_busy = false;
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 	required_device<z80_device> m_maincpu;
 	required_device<mc6847_base_device> m_vdg;
 	required_device<cassette_image_device> m_cass;
@@ -484,12 +484,12 @@ void spc1000_state::spc1000(machine_config &config)
 	/* video hardware */
 	SCREEN(config, "screen", SCREEN_TYPE_RASTER);
 
-	MC6847_NTSC(config, m_vdg, XTAL(3'579'545));
+	MC6847(config, m_vdg, XTAL(3'579'545));
 	m_vdg->set_screen("screen");
 	m_vdg->fsync_wr_callback().set(FUNC(spc1000_state::irq_w));
 	m_vdg->input_callback().set(FUNC(spc1000_state::mc6847_videoram_r));
 	m_vdg->set_get_char_rom(FUNC(spc1000_state::get_char_rom));
-	m_vdg->set_get_fixed_mode(mc6847_ntsc_device::MODE_GM2);
+	m_vdg->set_get_fixed_mode(mc6847_device::MODE_GM2);
 	// other lines not connected
 
 	/* sound hardware */

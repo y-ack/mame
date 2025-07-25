@@ -182,7 +182,7 @@ ones.  The other 7 words are ignored.  Global scrollx is ignored.
 
 
 
-DEFINE_DEVICE_TYPE(K056832, k056832_device, "k056832", "K056832 Tilemap Generator")
+DEFINE_DEVICE_TYPE(K056832, k056832_device, "k056832", "Konami 056832 Tilemap Generator")
 
 k056832_device::k056832_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
 	device_t(mconfig, K056832, tag, owner, clock),
@@ -211,7 +211,6 @@ k056832_device::k056832_device(const machine_config &mconfig, const char *tag, d
 	//m_line_dirty[K056832_PAGE_COUNT][8],
 	//m_all_lines_dirty[K056832_PAGE_COUNT],
 	//m_page_tile_mode[K056832_PAGE_COUNT],
-	//m_last_colorbase[K056832_PAGE_COUNT],
 	//m_layer_tile_mode[8],
 	m_default_layer_association(0),
 	m_layer_association(0),
@@ -224,6 +223,7 @@ k056832_device::k056832_device(const machine_config &mconfig, const char *tag, d
 	m_cur_tile_bank(0),
 	m_k055555(*this, finder_base::DUMMY_TAG)
 {
+	std::fill(std::begin(m_last_colorbase), std::end(m_last_colorbase), 0);
 }
 
 void k056832_device::create_tilemaps()
@@ -506,7 +506,7 @@ void k056832_device::get_tile_info(  tile_data &tileinfo, int tile_index, int pa
 	color = (attr & smptr->palm1) | (attr >> smptr->pals2 & smptr->palm2);
 	flags = TILE_FLIPYX(flip);
 
-	m_k056832_cb(layer, &code, &color, &flags, &priority);
+	m_k056832_cb(layer, &code, &color, &flags, &priority, attr);
 
 	tileinfo.set(m_gfx_num,
 			code,
@@ -678,11 +678,16 @@ u32 k056832_device::k_6bpp_rom_long_r(offs_t offset, u32 mem_mask)
 
 u8 k056832_device::konmedal_rom_r(offs_t offset)
 {
-	uint32_t addr = (((m_regs[0x1a] << 9) & 0x60000) | ((m_regs[0x1b] << 15) & 0x18000) | ((m_regs[0x1a] << 3) & 0x06000)) + offset;
-
+	const uint32_t addr = (((m_regs[0x1a] << 9) & 0x60000) | ((m_regs[0x1b] << 15) & 0x18000) | ((m_regs[0x1a] << 3) & 0x06000)) + offset;
 	return m_rombase[addr];
 }
 
+u8 k056832_device::chusenoh_rom_r(offs_t offset)
+{
+	const uint32_t bank = (m_regs[0x1b] << 17) | (m_regs[0x1a] << 5);
+	const uint32_t addr = bank + offset;
+	return m_rombase[addr];
+}
 
 u16 k056832_device::piratesh_rom_r(offs_t offset)
 {

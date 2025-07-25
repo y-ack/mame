@@ -47,17 +47,17 @@ public:
 	void init_kirameki();
 	void init_common();
 
-	template <int Num> DECLARE_CUSTOM_INPUT_MEMBER(f3_analog_r);
-	template <int Num> DECLARE_CUSTOM_INPUT_MEMBER(f3_coin_r);
-	DECLARE_CUSTOM_INPUT_MEMBER(eeprom_read);
+	template <int Num> ioport_value f3_analog_r();
+	template <int Num> ioport_value f3_coin_r();
+	ioport_value eeprom_read();
 
 protected:
 	// should be 30.47618_MHz_XTAL / 2
 	static constexpr XTAL F3_MAIN_CLK = 30.47618_MHz_XTAL / 2;
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 	TIMER_CALLBACK_MEMBER(trigger_int3);
 	TIMER_CALLBACK_MEMBER(trigger_int5);
@@ -81,8 +81,8 @@ protected:
 	u32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	void screen_vblank(int state);
 
-	void bubsympb_map(address_map &map);
-	void f3_map(address_map &map);
+	void bubsympb_map(address_map &map) ATTR_COLD;
+	void f3_map(address_map &map) ATTR_COLD;
 
 private:
 	required_device<tc0630fdp_device> m_fdp;
@@ -103,7 +103,7 @@ private:
 
 	INTERRUPT_GEN_MEMBER(interrupt2);
 
-	void bubsympb_oki_map(address_map &map);
+	void bubsympb_oki_map(address_map &map) ATTR_COLD;
 };
 
 #endif // MAME_TAITO_TAITO_F3_H

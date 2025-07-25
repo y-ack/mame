@@ -160,8 +160,8 @@ public:
 	void gal3(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	required_device_array<namco_c355spr_device, 2> m_c355spr;
@@ -189,11 +189,11 @@ private:
 	// using ind16 for now because namco_c355spr_device::zdrawgfxzoom does not support rgb32, will probably need to be improved for LD use
 	uint32_t screen_update_left(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	uint32_t screen_update_right(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	void cpu_mst_map(address_map &map);
-	void cpu_slv_map(address_map &map);
-	void psn_b1_cpu_map(address_map &map);
-	void rs_cpu_map(address_map &map);
-	void sound_cpu_map(address_map &map);
+	void cpu_mst_map(address_map &map) ATTR_COLD;
+	void cpu_slv_map(address_map &map) ATTR_COLD;
+	void psn_b1_cpu_map(address_map &map) ATTR_COLD;
+	void rs_cpu_map(address_map &map) ATTR_COLD;
+	void sound_cpu_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -681,19 +681,18 @@ void gal3_state::gal3(machine_config &config)
 	m_namcos21_dsp_c67[1]->set_renderer_tag("namcos21_3d_2");
 
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
 	// TODO: Total 5 of C140s in sound board, verified from gal3zlgr PCB - gal3 uses same board?
 	C140(config, m_c140_16g, 49152000/2304);
 	//m_c140_16g->set_addrmap(0, &gal3_state::c140_16g_map);    //to be verified
-	m_c140_16g->add_route(0, "lspeaker", 0.50);
-	m_c140_16g->add_route(1, "rspeaker", 0.50);
+	m_c140_16g->add_route(0, "speaker", 0.50, 0);
+	m_c140_16g->add_route(1, "speaker", 0.50, 1);
 
 	C140(config, m_c140_16a, 49152000/2304);
 	//m_c140_16a->set_addrmap(0, &gal3_state::c140_16a_map);    //to be verified
-	m_c140_16a->add_route(0, "lspeaker", 0.50);
-	m_c140_16a->add_route(1, "rspeaker", 0.50);
+	m_c140_16a->add_route(0, "speaker", 0.50, 0);
+	m_c140_16a->add_route(1, "speaker", 0.50, 1);
 }
 
 /*

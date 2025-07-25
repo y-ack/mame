@@ -36,7 +36,7 @@ protected:
 	{
 	}
 
-	virtual void machine_reset() override;
+	virtual void machine_reset() override ATTR_COLD;
 
 	void md_core_ntsc(machine_config &config);
 	void md_core_pal(machine_config &config);
@@ -118,20 +118,21 @@ protected:
 	void md2_pal(machine_config &config);
 	void md_bootleg(machine_config &config);
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
-	void megadriv_68k_base_map(address_map &map);
-	void megadriv_68k_map(address_map &map);
-	void megadriv_z80_io_map(address_map &map);
-	void megadriv_z80_map(address_map &map);
+	void megadriv_68k_base_map(address_map &map) ATTR_COLD;
+	void megadriv_68k_map(address_map &map) ATTR_COLD;
+	void megadriv_z80_io_map(address_map &map) ATTR_COLD;
+	void megadriv_z80_map(address_map &map) ATTR_COLD;
 
 	required_device<cpu_device> m_z80snd;
 	required_device<ym_generic_device> m_ymsnd;
 	optional_shared_ptr<uint16_t> m_megadrive_ram;
 
 	genesis_z80_vars m_genz80;
-	int m_version_hi_nibble;
+	uint8_t m_version_hi_nibble;
+	uint8_t m_version_lo_nibble; // 0 = non-TMSS, 1 = TMSS
 
 	required_device_array<megadrive_io_port_device, 3> m_ioports;
 
@@ -166,7 +167,7 @@ protected:
 	void ctrl1_6button(machine_config &config);
 	void ctrl2_6button(machine_config &config);
 
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	template <unsigned N> uint8_t ioport_in_3button();

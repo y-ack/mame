@@ -140,12 +140,12 @@ private:
 	uint8_t jamma_if_control_latch_r();
 	uint8_t jamma_if_read_dsw(offs_t offset);
 	virtual uint8_t joy_read() override;
-	virtual void machine_reset() override;
+	virtual void machine_reset() override ATTR_COLD;
 	required_device<discrete_device> m_discrete;
 
-	void pce_io(address_map &map);
-	void pce_mem(address_map &map);
-	void z80_map(address_map &map);
+	void pce_io(address_map &map) ATTR_COLD;
+	void pce_mem(address_map &map) ATTR_COLD;
+	void z80_map(address_map &map) ATTR_COLD;
 };
 
 #define UAPCE_SOUND_EN  NODE_10
@@ -331,8 +331,8 @@ void uapce_state::uapce(machine_config &config)
 	m_maincpu->set_addrmap(AS_IO, &uapce_state::pce_io);
 	m_maincpu->port_in_cb().set(FUNC(uapce_state::pce_joystick_r));
 	m_maincpu->port_out_cb().set(FUNC(uapce_state::pce_joystick_w));
-	m_maincpu->add_route(0, "lspeaker", 0.5);
-	m_maincpu->add_route(1, "rspeaker", 0.5);
+	m_maincpu->add_route(0, "speaker", 0.5, 0);
+	m_maincpu->add_route(1, "speaker", 0.5, 1);
 
 	z80_device &sub(Z80(config, "sub", 1400000));
 	sub.set_addrmap(AS_PROGRAM, &uapce_state::z80_map);
@@ -355,10 +355,9 @@ void uapce_state::uapce(machine_config &config)
 	huc6270.set_vram_size(0x10000);
 	huc6270.irq().set_inputline(m_maincpu, 0);
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 
-	DISCRETE(config, m_discrete, uapce_discrete).add_route(0, "rspeaker", 1.00);
+	DISCRETE(config, m_discrete, uapce_discrete).add_route(0, "speaker", 1.00, 1);
 }
 
 ROM_START(blazlaz)

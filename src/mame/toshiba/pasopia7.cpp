@@ -32,17 +32,19 @@
 
 #include "bus/pasopia/pac2.h"
 #include "cpu/z80/z80.h"
+#include "imagedev/cassette.h"
 #include "imagedev/floppy.h"
 #include "machine/i8255.h"
 #include "machine/upd765.h"
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
 #include "sound/sn76496.h"
-#include "video/mc6845.h"
-#include "imagedev/cassette.h"
 #include "sound/spkrdev.h"
+#include "video/mc6845.h"
+
 #include "emupal.h"
 #include "screen.h"
+#include "softlist_dev.h"
 #include "speaker.h"
 
 
@@ -82,9 +84,9 @@ public:
 	void init_p7_raster();
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	uint8_t vram_r(offs_t offset);
@@ -114,8 +116,8 @@ private:
 	void p7_lcd_palette(palette_device &palette) const;
 	MC6845_UPDATE_ROW(update_row);
 
-	void pasopia7_io(address_map &map);
-	void pasopia7_mem(address_map &map);
+	void pasopia7_io(address_map &map) ATTR_COLD;
+	void pasopia7_mem(address_map &map) ATTR_COLD;
 
 	std::unique_ptr<uint8_t[]> m_work_ram;
 	std::unique_ptr<uint8_t[]> m_vram;
@@ -384,7 +386,7 @@ void pasopia7_state::memory_ctrl_w(uint8_t data)
 
 	// bank4 is always RAM
 
-//  printf("%02x\n",m_vram_sel);
+//  logerror("%02x\n",m_vram_sel);
 }
 
 /* writes always occurs to the RAM banks, even if the ROMs are selected. */
@@ -655,24 +657,24 @@ uint8_t pasopia7_state::crtc_portb_r()
 void pasopia7_state::screen_mode_w(uint8_t data)
 {
 	if(data & 0x5f)
-		printf("GFX MODE %02x\n",data);
+		logerror("GFX MODE %02x\n",data);
 
 	m_x_width = data & 0x20;
 	m_gfx_mode = data & 0x80;
 
-//  printf("%02x\n",m_gfx_mode);
+//  logerror("%02x\n",m_gfx_mode);
 }
 
 void pasopia7_state::plane_reg_w(uint8_t data)
 {
 	//if(data & 0x11)
-	//printf("PLANE %02x\n",data);
+	//logerror("PLANE %02x\n",data);
 	m_plane_reg = data;
 }
 
 void pasopia7_state::video_attr_w(uint8_t data)
 {
-	//printf("VIDEO ATTR %02x | TEXT_PAGE %02x\n",data & 0xf,data & 0x70);
+	//logerror("VIDEO ATTR %02x | TEXT_PAGE %02x\n",data & 0xf,data & 0x70);
 	m_attr_data = (data & 0x7) | ((data & 0x8)<<4);
 }
 
@@ -688,7 +690,7 @@ void pasopia7_state::video_misc_w(uint8_t data)
 	*/
 	//if(data & 2)
 	//{
-	//  printf("VIDEO MISC %02x\n",data);
+	//  logerror("VIDEO MISC %02x\n",data);
 	//  machine().debug_break();
 	//}
 	m_cursor_blink = data & 0x20;
@@ -704,7 +706,7 @@ void pasopia7_state::nmi_mask_w(uint8_t data)
 	---- --x- sound off
 	---- ---x reset NMI & trap
 	*/
-//  printf("SYSTEM MISC %02x\n",data);
+//  logerror("SYSTEM MISC %02x\n",data);
 
 	if(data & 1)
 	{
@@ -727,7 +729,7 @@ uint8_t pasopia7_state::unk_r()
 
 uint8_t pasopia7_state::nmi_reg_r()
 {
-	//printf("C\n");
+	//logerror("C\n");
 	return 0xfc | m_bank_reg;//machine().rand();
 }
 
@@ -845,8 +847,12 @@ void pasopia7_state::p7_base(machine_config &config)
 	CASSETTE(config, m_cass);
 	m_cass->set_default_state(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED);
 	m_cass->add_route(ALL_OUTPUTS, "mono", 0.05);
+	m_cass->set_interface("pasopia7_cass");
 
 	PASOPIA_PAC2(config, m_pac2, pac2_default_devices, nullptr);
+
+	SOFTWARE_LIST(config, "cass_list").set_original("pasopia7_cass");
+//	SOFTWARE_LIST(config, "flop_list").set_original("pasopia7_flop");
 }
 
 void pasopia7_state::p7_raster(machine_config &config)

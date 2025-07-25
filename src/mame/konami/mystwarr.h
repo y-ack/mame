@@ -51,6 +51,7 @@ private:
 	int m_roz_rombank = 0;
 	tilemap_t *m_ult_936_tilemap = nullptr;
 	uint16_t m_clip = 0;
+	uint8_t m_last_alpha_tile_mix_code = 0;
 
 	uint8_t m_sound_ctrl = 0;
 	uint8_t m_sound_nmi_clk = 0;
@@ -103,6 +104,7 @@ private:
 	TIMER_DEVICE_CALLBACK_MEMBER(metamrph_interrupt);
 	TIMER_DEVICE_CALLBACK_MEMBER(mchamp_interrupt);
 	K056832_CB_MEMBER(mystwarr_tile_callback);
+	K056832_CB_MEMBER(viostorm_tile_callback);
 	K056832_CB_MEMBER(game5bpp_tile_callback);
 	K056832_CB_MEMBER(game4bpp_tile_callback);
 	K055673_CB_MEMBER(mystwarr_sprite_callback);
@@ -110,14 +112,14 @@ private:
 	K055673_CB_MEMBER(gaiapols_sprite_callback);
 	K055673_CB_MEMBER(martchmp_sprite_callback);
 	void decode_tiles();
-	void dadandrn_map(address_map &map);
-	void gaiapols_map(address_map &map);
-	void martchmp_map(address_map &map);
-	void martchmp_sound_map(address_map &map);
-	void metamrph_map(address_map &map);
-	void mystwarr_map(address_map &map);
-	void mystwarr_sound_map(address_map &map);
-	void oki_map(address_map &map); // for viostormabbl
-	void viostorm_map(address_map &map);
-	void viostormbl_map(address_map &map);
+	void dadandrn_map(address_map &map) ATTR_COLD;
+	void gaiapols_map(address_map &map) ATTR_COLD;
+	void martchmp_map(address_map &map) ATTR_COLD;
+	void martchmp_sound_map(address_map &map) ATTR_COLD;
+	void metamrph_map(address_map &map) ATTR_COLD;
+	void mystwarr_map(address_map &map) ATTR_COLD;
+	void mystwarr_sound_map(address_map &map) ATTR_COLD;
+	void oki_map(address_map &map) ATTR_COLD; // for viostormabbl
+	void viostorm_map(address_map &map) ATTR_COLD;
+	void viostormbl_map(address_map &map) ATTR_COLD;
 };

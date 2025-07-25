@@ -84,10 +84,10 @@ public:
 	void init_virus();
 
 private:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
-	void virus_map(address_map &map);
+	void virus_map(address_map &map) ATTR_COLD;
 
 	required_device<cpu_device> m_maincpu;
 	required_memory_bank m_rombank;
@@ -114,8 +114,7 @@ void acvirus_state::virus(machine_config &config)
 	SAB80C535(config, m_maincpu, XTAL(12'000'000));
 	m_maincpu->set_addrmap(AS_PROGRAM, &acvirus_state::virus_map);
 
-	SPEAKER(config, "lspeaker").front_left();
-	SPEAKER(config, "rspeaker").front_right();
+	SPEAKER(config, "speaker", 2).front();
 }
 
 static INPUT_PORTS_START( virus )
