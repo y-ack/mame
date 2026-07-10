@@ -69,7 +69,7 @@ protected:
 private:
 	required_device<screen_device> m_screen;
 	required_device<cpu_device> m_maincpu;
-	required_device<FDP> m_fdp;
+	required_device<tc0630fdp_device> m_fdp;
 	optional_shared_ptr<u16> m_paletteram;
 
 	/* input-related */
@@ -213,8 +213,8 @@ void _2mindril_state::drill_map(address_map &map)
 	map(0x000000, 0x07ffff).rom();
 	map(0x200000, 0x20ffff).ram();
 	map(0x300000, 0x3000ff).ram();
-	map(0x400000, 0x43ffff).m(m_fdp, FUNC(FDP::map_ram));
-	map(0x460000, 0x46001f).m(m_fdp, FUNC(FDP::map_control));
+	map(0x400000, 0x43ffff).m(m_fdp, FUNC(tc0630fdp_device::map_ram));
+	map(0x460000, 0x46001f).m(m_fdp, FUNC(tc0630fdp_device::map_control));
 	map(0x500000, 0x501fff).ram().w(FUNC(_2mindril_state::paletteram_w)).share("paletteram");
 	map(0x502022, 0x502023).nopw(); //countinously switches between 0 and 2
 	map(0x600000, 0x600007).rw("ymsnd", FUNC(ym2610b_device::read), FUNC(ym2610b_device::write)).umask16(0x00ff);
