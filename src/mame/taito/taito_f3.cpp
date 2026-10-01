@@ -126,42 +126,22 @@ void taito_f3_state::sound_bankswitch_w(offs_t offset, u32 data, u32 mem_mask)
 
 void taito_f3_state::f3_timer_control_w(offs_t offset, u16 data)
 {
-	/*
-	TODO: Several games configure timer-based pseudo-hblank int5 here at POST
-	ringrage:  0x0000
-	arabianm:  0x0000
-	ridingf: (no init)
-	gseeker: (no init)
-	commandw:(no init)
-	cupfinal:  0x0100
-	trstar:  (no init)
-	gunlock:   0x0000
-	scfinals:  0x0100
-	lightbr: (no init)
-	intcup94:  0x0100
-	kaiserkn:  0x0100
-	dariusg:   0x278b
-	bublbob2:(no init)
-	pwrgoal:   0x0100
-	qtheater:  0x0090
-	elvactr:   0x278b
-	recalh:    0x0090
-	spcinv95:  0x0100
-	twinqix: (no init)
-	quizhuhu:  0x0000
-	pbobble2:  0x278b
-	gekiridn:  0x278b
-	tcobra2:   0x0000
-	bubblem: (no init)
-	cleopatr:  0x0100
-	pbobble3:  0x278b
-	arkretn:   0x0000
-	kirameki:  0x0100
-	puchicar:  0x0000
-	pbobble4:  0x278b
-	popnpop:   0x0000
-	landmakr:  0x278b
-	*/
+	// interrupt 5
+	// configurable interval timer, controlled by a 16bit register at address 0x4C0000
+	// [..e. rrrr rrrr rrrr]
+	// e: 1 = enable
+	// r: rate
+	// this interrupt will fire every (0x4000 - rate*8 + 32) cpu cycles
+	// (this formula matches my hardware measurements to within ~10 cycles)
+
+	bool enable = BIT(data, 13);
+	int rate = BIT(data, 0, 12);
+	if (enable) {
+		attotime time = m_maincpu->cycles_to_attotime(0x4000 - rate*8 + 32);
+		m_interrupt5_timer->adjust(time, 0, time);
+	}
+	m_interrupt5_timer->enable(enable);
+
 	if (offset == 0)
 		logerror("0x4c0000 write %04x\n",data);
 	else
@@ -349,6 +329,11 @@ TIMER_CALLBACK_MEMBER(taito_f3_state::trigger_int3)
 	m_maincpu->set_input_line(3, HOLD_LINE);
 }
 
+TIMER_CALLBACK_MEMBER(taito_f3_state::trigger_int5)
+{
+	m_maincpu->set_input_line(5, HOLD_LINE);
+}
+
 INTERRUPT_GEN_MEMBER(taito_f3_state::interrupt2)
 {
 	device.execute().set_input_line(2, HOLD_LINE);  // vblank
@@ -358,6 +343,7 @@ INTERRUPT_GEN_MEMBER(taito_f3_state::interrupt2)
 void taito_f3_state::machine_start()
 {
 	m_interrupt3_timer = timer_alloc(FUNC(taito_f3_state::trigger_int3), this);
+	m_interrupt5_timer = timer_alloc(FUNC(taito_f3_state::trigger_int5), this);
 
 	save_item(NAME(m_coin_word));
 }
@@ -466,7 +452,7 @@ void taito_f3_state::init_common()
 void taito_f3_state::init_kirameki()
 {
 	m_has_sample_banking = true;
-	
+
 	init_common();
 }
 
@@ -474,7 +460,7 @@ void taito_f3_state::init_bubsympb()
 {
 	// almost certainly wrong
 	m_okibank->configure_entries(0, 5, memregion("oki")->base() + 0x30000, 0x10000);
-	
+
 	init_common();
 }
 
@@ -489,7 +475,7 @@ void taito_f3_state::init_landmkrp()
 	ROMs running on it.  Easiest thing to do is switch the data around here */
 	ROM[0x1ffff8/4]=0xffffffff; /* From 0xffffff03 */
 	ROM[0x1ffffc/4]=0xffff0003; /* From 0xffff00ff */
-	
+
 	init_common();
 }
 
@@ -504,7 +490,7 @@ void taito_f3_state::init_pbobbl2p()
 	// HACK: protection?
 	ROM[0x40090/4]=0x00004e71|(ROM[0x40090/4]&0xffff0000);
 	ROM[0x40094/4]=0x4e714e71;
-	
+
 	init_common();
 }
 
