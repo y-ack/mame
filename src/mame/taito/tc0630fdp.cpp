@@ -1,3 +1,7 @@
+// license:BSD-3-Clause
+// copyright-holders:Bryan McPhail, ywy, 12Me21
+/******************************************************************************/
+
 #include "emu.h"
 #include "tc0630fdp.h"
 

@@ -1,10 +1,13 @@
+// license:BSD-3-Clause
+// copyright-holders:Bryan McPhail, ywy, 12Me21
+
 #ifndef MAME_TAITO_TC0630FDP_H
 #define MAME_TAITO_TC0630FDP_H
 
 #pragma once
 
-#include "tilemap.h"
 #include "emupal.h"
+#include "tilemap.h"
 
 #include <bitset>
 
@@ -13,15 +16,11 @@ class tc0630fdp_device : public device_t, public device_gfx_interface
 public:
 	tc0630fdp_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	void device_add_mconfig(machine_config &config) override;
-
-	virtual void device_start() override;
-
 	DECLARE_GFXDECODE_MEMBER(gfxinfo);
 	DECLARE_GFXDECODE_MEMBER(gfx_bubsympb);
 
-	void map_ram(address_map &map);
-	void map_control(address_map &map);
+	void map_ram(address_map &map) ATTR_COLD;
+	void map_control(address_map &map) ATTR_COLD;
 
 	void tile_decode();
 
@@ -39,6 +38,10 @@ public:
 	required_device<palette_device> m_palette_15bit;
 
 protected:
+	void device_add_mconfig(machine_config &config) override ATTR_COLD;
+
+	virtual void device_start() override ATTR_COLD;
+
 	using fixed8 = s32;
 
 	static constexpr int H_TOTAL = 432;
@@ -272,7 +275,7 @@ protected:
 	bool m_sprite_bank = 0;
 	//f3_line_inf m_line_data{};
 
-	virtual void device_post_load(void) override;
+	virtual void device_post_load() override ATTR_COLD;
 
 	u16 spriteram_r(offs_t offset);
 	void spriteram_w(offs_t offset, u16 data, u16 mem_mask = ~0);

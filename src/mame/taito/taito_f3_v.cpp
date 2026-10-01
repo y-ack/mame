@@ -363,7 +363,7 @@ void taito_f3_state::video_start()
 	};
 
 	const game_driver &game = machine().system();
-	
+
 	const F3config *config;
 	for (config = &f3_config_table[0]; config->name; config++) {
 		if (!strcmp(config->name, game.name) || !strcmp(config->name, game.parent))
