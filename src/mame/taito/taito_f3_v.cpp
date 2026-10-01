@@ -139,7 +139,7 @@ Line ram memory map:
        0xf000: palette ram format? [unemulated]
          Bits: ?wBu
            ? = ? possibly "interpret palette ram for this as 21-bit palette"
-           w = 1 = interpret palette entries as 12-bit RGB
+           w = 1 = interpret palette entries as 15-bit RGB
            B = 0 = enable horizontal forward blur (1 = don't blur)
            u = ??? (normally 1)
 
@@ -382,9 +382,9 @@ void taito_f3_state::palette_24bit_w(offs_t offset, u32 data, u32 mem_mask)
 	COMBINE_DATA(&m_paletteram32[offset]);
 	const u32 color = m_paletteram32[offset];
 
-	// .... .... .... .... RRRR GGGG BBBB ....
+	// .... .... .... .... RRRR GGGG BBBB rgb.
 	// .... .... RRRR rrrr GGGG gggg BBBB bbbb
-	m_fdp->m_palette_12bit->set_pen_color(offset, rgb_t(BIT(color, 12, 4) * 16, BIT(color, 8, 4) * 16, BIT(color, 4, 4) * 16));
+	m_fdp->m_palette_15bit->set_pen_color(offset, rgb_t(BIT(color, 12, 4) * 16 + BIT(color, 3) * 8, BIT(color, 8, 4) * 16 + BIT(color, 2) * 8, BIT(color, 4, 4) * 16 + BIT(color, 1) * 8));
 	m_fdp->m_palette->set_pen_color(offset, rgb_t(color).set_a(255));
 }
 

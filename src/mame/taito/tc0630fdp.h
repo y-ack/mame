@@ -14,32 +14,32 @@ class FDP : public device_t, public device_gfx_interface
 {
 public:
 	FDP(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
-	
+
 	void device_add_mconfig(machine_config &config) override;
-	
+
 	virtual void device_start() override;
-	
+
 	DECLARE_GFXDECODE_MEMBER(gfxinfo);
 	DECLARE_GFXDECODE_MEMBER(gfx_bubsympb);
-	
+
 	void map_ram(address_map &map);
 	void map_control(address_map &map);
-	
+
 	void tile_decode();
-	
+
 	void create_tilemaps(bool extend);
-	
+
 	int m_sprite_lag = 0;
 	bool m_flipscreen = false;
 	bool m_extend = false;
-	
+
 	void read_sprite_info();
 	void draw_sprites();
 	void scanline_draw(bitmap_rgb32 &bitmap, const rectangle &cliprect);
-	
+
 	required_device<palette_device> m_palette;
-	required_device<palette_device> m_palette_12bit;
-	
+	required_device<palette_device> m_palette_15bit;
+
 protected:
 	using fixed8 = s32;
 
@@ -67,7 +67,7 @@ protected:
 	u16 m_control_1[8]{};
 
 	void decode_hi(int low, int high, std::unique_ptr<u8[]> &decoded);
-	
+
 	std::unique_ptr<u8[]> m_decoded_gfx4;
 	std::unique_ptr<u8[]> m_decoded_gfx5;
 
@@ -79,7 +79,7 @@ protected:
 		fixed8 scale_x, scale_y;
 		u8 pri;
 	};
-	
+
 	struct clip_plane_inf {
 		s16 l;
 		s16 r;
@@ -225,6 +225,11 @@ protected:
 		u8 dst_blendmode[H_TOTAL]{};
 	};
 
+	struct fda_settings {
+		bool blur{true};
+		bool palette_15bit{true};
+	};
+
 	struct f3_line_inf {
 		int y{0};
 		int screen_y{0};
@@ -245,6 +250,8 @@ protected:
 		pivot_inf pivot;
 		sprite_inf sp[NUM_SPRITEGROUPS];
 		playfield_inf pf[NUM_PLAYFIELDS];
+
+		fda_settings fda;
 	};
 
 	tilemap_t *m_tilemap[8] = {nullptr};
@@ -283,16 +290,16 @@ protected:
 	void pivotram_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 	void control_0_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 	void control_1_w(offs_t offset, u16 data, u16 mem_mask = ~0);
-	
+
 	template<unsigned Layer> TILE_GET_INFO_MEMBER(get_tile_info);
 	TILE_GET_INFO_MEMBER(get_tile_info_text);
 	TILE_GET_INFO_MEMBER(get_tile_info_pixel);
-	
+
 	inline void f3_drawgfx(const tempsprite &sprite);
 	void get_pf_scroll(int pf_num, fixed8 &reg_sx, fixed8 &reg_sy);
 	void read_line_ram(f3_line_inf &line, int y);
-	void render_line(pen_t *dst, const mix_pix &z);
-	
+	void render_line(pen_t *RESTRICT dst, const mix_pix &z, const fda_settings &fda);
+
 	template<typename Mix>
 	std::vector<clip_plane_inf> calc_clip(const clip_plane_inf (&clip)[NUM_CLIPPLANES], const Mix &layer);
 	inline bool used(const pivot_inf &layer, int y) const;

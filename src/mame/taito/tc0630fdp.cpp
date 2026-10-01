@@ -12,7 +12,7 @@ FDP::FDP(const machine_config &mconfig, const char *tag, device_t *owner, uint32
 	: device_t(mconfig, TC0630FDP, tag, owner, clock)
 	, device_gfx_interface(mconfig, *this, gfxinfo, "palette")
 	, m_palette(*this, "palette")
-	, m_palette_12bit(*this, "palette_12bit")
+	, m_palette_15bit(*this, "palette_15bit")
 	, m_spriteram(*this, "spriteram", 0x10000, ENDIANNESS_LITTLE)
 	, m_pfram(*this, "pfram", 0xc000, ENDIANNESS_LITTLE)
 	, m_textram(*this, "textram", 0x2000, ENDIANNESS_LITTLE)
@@ -29,8 +29,8 @@ void FDP::device_add_mconfig(machine_config &config) {
 	PALETTE(config, m_palette);
 	m_palette->set_entries(0x2000);
 	set_palette(m_palette); // i guess..
-	PALETTE(config, m_palette_12bit);
-	m_palette_12bit->set_entries(0x2000);//->set_format(RRRRGGGGBBBBxxxx, 0x2000);
+	PALETTE(config, m_palette_15bit);
+	m_palette_15bit->set_entries(0x2000);//->set_format(RRRRGGGGBBBBxxxx, 0x2000);
 }
 
 void FDP::device_post_load()
@@ -81,7 +81,7 @@ static const gfx_layout layout_pivot = {
 #define NEXT 48
 
 static const gfx_layout layout_tile_low = {
- 	16,16,
+	16,16,
 	RGN_FRAC(1,1),
 	4,
 	{ STEP4(0,1) },
@@ -132,7 +132,7 @@ static const gfx_layout layout_sprite_hi = {
 	RGN_FRAC(1,1),
 	6,
 	{ STEP2(16, 1), 0,0,0,0 },
-	{ 
+	{
 		STEP4_INV(NEXT*0, 2),
 		STEP4_INV(NEXT*1, 2),
 		STEP4_INV(NEXT*2, 2),
@@ -343,20 +343,20 @@ void FDP::create_tilemaps(bool extend)
 		for (int i = 0; i < 8; i++)
 			m_pf_data[i] = &m_pfram[(0x1000 * i) / 2];
 	}
-	
+
 	m_vram_layer = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info_text)), TILEMAP_SCAN_ROWS, 8, 8, 64, 64);
 	m_pixel_layer = &machine().tilemap().create(*this, tilemap_get_info_delegate(*this, FUNC(FDP::get_tile_info_pixel)), TILEMAP_SCAN_COLS, 8, 8, 64, 32);
 	m_vram_layer->set_transparent_pen(0);
 	m_pixel_layer->set_transparent_pen(0);
 	std::fill_n(m_textram_row_usage, 64, 0);
 
-	
+
 	m_spritelist = std::make_unique<tempsprite[]>(0x400);
 	m_sprite_end = &m_spritelist[0];
 
 	save_item(NAME(m_control_0));
 	save_item(NAME(m_control_1));
-	
+
 	// Palettes have 4 bpp indexes despite up to 6 bpp data. The unused top bits in the gfx data are cleared later.
 	gfx(2)->set_granularity(16);
 	gfx(3)->set_granularity(16);
@@ -559,7 +559,10 @@ void FDP::read_line_ram(f3_line_inf &line, int y)
 		}
 		line.pivot.x_sample_enable = BIT(x_mosaic, 9);
 
-		line.fx_6400 = (x_mosaic & 0xfc00) >> 8; // palette interpretation [unimplemented]
+		line.fda.blur = !BIT(x_mosaic, 13);
+		line.fda.palette_15bit = !BIT(x_mosaic, 14);
+
+		line.fx_6400 = (x_mosaic & 0x9c00) >> 8;
 		if (TAITOF3_VIDEO_DEBUG == 1) {
 			// gseeker(intro):40, ringrage/arabianm:30/33, ridingf:30/31, spcinvdj:30, gunlock:78
 			if (line.fx_6400 && line.fx_6400 != 0x70) // check if unknown effect bits set
@@ -883,9 +886,9 @@ bool FDP::mix_line(const Mix &layer, mix_pix &z, pri_mode &pri, const f3_line_in
 	return false; // TODO: determine when we can stop drawing?
 }
 
-void FDP::render_line(pen_t *RESTRICT dst, const mix_pix &z)
+void FDP::render_line(pen_t *RESTRICT dst, const mix_pix &z, const fda_settings &fda)
 {
-	const pen_t *clut = m_palette->pens();
+	const pen_t *clut = (fda.palette_15bit ? m_palette_15bit : m_palette)->pens();
 	for (unsigned int x = H_START; x < H_START + H_VIS; x++) {
 		rgb_t s_rgb = clut[z.src_pal[x]];
 		rgb_t d_rgb = clut[z.dst_pal[x]];
@@ -915,6 +918,15 @@ void FDP::render_line(pen_t *RESTRICT dst, const mix_pix &z)
 		b1 = std::min<u16>(b1, 255);
 
 		dst[x] = rgb_t(r1, g1, b1);
+	}
+
+	if (fda.blur) {
+		rgb_t prev{0};
+		for (int x = H_START; x < H_END; x++) {
+			rgb_t col = dst[x];
+			dst[x] = rgb_t(((u16)col.r()+prev.r())/2, ((u16)col.g()+prev.g())/2, ((u16)col.b()+prev.b())/2);
+			prev = col;
+		}
 	}
 }
 
@@ -1030,7 +1042,7 @@ void FDP::scanline_draw(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 				}
 			}
 
-			render_line(&bitmap.pix(screen_y), line_buf);
+			render_line(&bitmap.pix(screen_y), line_buf, line_data.fda);
 		}
 
 		if (screen_y != 0) {

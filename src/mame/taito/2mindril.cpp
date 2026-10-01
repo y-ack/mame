@@ -375,7 +375,7 @@ void _2mindril_state::paletteram_w(offs_t offset, u16 data, u16 mem_mask)
 
 	// .... .... .... .... RRRR GGGG BBBB rgb.
 	// .... .... RRRR rrrr GGGG gggg BBBB bbbb
-	m_fdp->m_palette_12bit->set_pen_color(offset, rgb_t(BIT(color, 12, 4) * 16 + BIT(color, 3) * 8, BIT(color, 8, 4) * 16 + BIT(color, 2) * 8, BIT(color, 4, 4) * 16 + BIT(color, 1) * 8));//m_fdp->m_palette_12bit->set_pen_color(offset, rgb_t(BIT(color, 12, 4) * 16, BIT(color, 8, 4) * 16, BIT(color, 4, 4) * 16)); // maybe?
+	m_fdp->m_palette_15bit->set_pen_color(offset, rgb_t(BIT(color, 12, 4) * 16 + BIT(color, 3) * 8, BIT(color, 8, 4) * 16 + BIT(color, 2) * 8, BIT(color, 4, 4) * 16 + BIT(color, 1) * 8));//m_fdp->m_palette_15bit->set_pen_color(offset, rgb_t(BIT(color, 12, 4) * 16, BIT(color, 8, 4) * 16, BIT(color, 4, 4) * 16)); // maybe?
 }
 
 
